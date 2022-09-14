@@ -153,6 +153,10 @@ private:
 
 	void CreateGraphicsPipeline();
 
+	VkShaderModule GenShaderModule(const std::vector<char>& a_CodeData) const;
+
+	void CreateRenderPass();
+
 	// GLFW members
 	GLFWwindow* m_Window;
 	VkSurfaceKHR m_WindowSurface;
@@ -174,5 +178,7 @@ private:
 	std::vector<VkImageView> m_SwapChainImageViews;
 	VkFormat m_SwapChainFormat;
 	VkExtent2D m_SwapChainExtent;
+
+	VkPipelineLayout m_PipelineLayout;
 };
 

@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "vRenderer/vRenderer.h"
 #include "vRenderer/helper_structs/RenderingHelpers.h"
+#include "vRenderer/helpers/helpers.h"
+#include "vRenderer/helpers/VulkanHelpers.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <algorithm>
@@ -29,6 +31,7 @@ bool VRenderer::Init(const int a_WindowWidth, const int a_WindowHeight)
 
 bool VRenderer::Terminate()
 {
+	vkDestroyPipelineLayout(m_LogicalDevice, m_PipelineLayout, nullptr);
 	DestroyImageViews();
 	vkDestroySwapchainKHR(m_LogicalDevice, m_SwapChain, nullptr);
 	vkDestroyDevice(m_LogicalDevice, nullptr);
@@ -665,6 +668,107 @@ void VRenderer::DestroyImageViews()
 
 void VRenderer::CreateGraphicsPipeline()
 {
+	// TODO separate this into several functions
+
+	// generate Shader modules
+	const auto t_VertexShaderByteCode = ReadFile("../vRenderer/assets/shaders/compiled/vertex_shader.spv");
+	const auto t_FragmentShaderByteCode = ReadFile("../vRenderer/assets/shaders/compiled/fragment_shader.spv");
+
+	const VkShaderModule t_VertexShader = GenShaderModule(t_VertexShaderByteCode);
+	const VkShaderModule t_FragmentShader = GenShaderModule(t_FragmentShaderByteCode);
+
+	// generate vertex shader stage
+	VkPipelineShaderStageCreateInfo t_VertShaderStageInfo = {};
+	t_VertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	t_VertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	// specify where the shader code is located and what the entry point is
+	t_VertShaderStageInfo.module = t_VertexShader;
+	t_VertShaderStageInfo.pName = "main";
+
+	// generate fragment shader stage
+	VkPipelineShaderStageCreateInfo t_FragShaderStageInfo = {};
+	t_FragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	t_FragShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	// specify where the shader code is located and what the entry point is
+	t_FragShaderStageInfo.module = t_FragmentShader;
+	t_FragShaderStageInfo.pName = "main";
+
+
+	// store shader stage create infos
+	VkPipelineShaderStageCreateInfo t_ShaderStageCreateInfos[] = {t_VertShaderStageInfo, t_FragShaderStageInfo};
+
+	// set dynamic states
+	std::vector<VkDynamicState> t_DynStates = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR
+	};
+
+	VkPipelineDynamicStateCreateInfo t_DynamicStateCreateInfo = GenDynamicStateCreateInfo(t_DynStates);
+
+	// create VertexInputStateCreateInfo
+	VkPipelineVertexInputStateCreateInfo t_VertexInputStateCreateInfo = GenVertexInputStateCreateInfo();
+
+	// generate Input Assembly stage
+	VkPipelineInputAssemblyStateCreateInfo t_InputAssemblyStateCreateInfo = GenInputAssemblyStateCreateInfo();
+
+	// generate Viewport
+	VkViewport t_Viewport = GenViewportData(m_SwapChainExtent);
+
+	// generate scissor rectangle
+	VkRect2D t_ScissorRect = {};
+	t_ScissorRect.offset = {0,0};
+	t_ScissorRect.extent = m_SwapChainExtent;
+
+	// generate Viewport State 
+	VkPipelineViewportStateCreateInfo t_ViewportState = GenViewportStateCreateInfo(1, t_Viewport, 1, t_ScissorRect);
+
+	// generate Rasterizer State
+	VkPipelineRasterizationStateCreateInfo t_RasterizationStateCreateInfo = GenRasterizationStateCreateInfo();
+
+	// generate Multisampling State Create Info
+	VkPipelineMultisampleStateCreateInfo t_MultisampleState = GenMultisamplingStateCreateInfo();
+
+
+	// generate ColorBlendAttachementState CreateInfo
+	VkPipelineColorBlendAttachmentState t_ColorBlendAttachementState = GenColorBlendAttachStateCreateInfo();
+
+	// generate ColorBlendState CreateInfo
+	VkPipelineColorBlendStateCreateInfo t_ColorBlendStateCreateInfo = GenColorBlendStateCreateInfo(t_ColorBlendAttachementState);
+
+
+	// generate Pipeline Layout
+	VkPipelineLayoutCreateInfo t_PipelineLayoutCreateInfo = GenPipelineCreateInfo();
+
+	if (vkCreatePipelineLayout(m_LogicalDevice, &t_PipelineLayoutCreateInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not create Pipeline Layout!");
+	}
+
+
+
+	// make Graphics Pipeline
+	
+
+
+	//destroy Shader modules at the end of the function
+	vkDestroyShaderModule(m_LogicalDevice, t_VertexShader, nullptr);
+	vkDestroyShaderModule(m_LogicalDevice, t_FragmentShader, nullptr);
+}
+
+VkShaderModule VRenderer::GenShaderModule(const std::vector<char>& a_CodeData) const
+{
+	VkShaderModuleCreateInfo t_ShaderModuleCreateInfo = {};
+	t_ShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	t_ShaderModuleCreateInfo.codeSize = a_CodeData.size();
+	t_ShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(a_CodeData.data());
+
+	VkShaderModule t_Module;
+	if (vkCreateShaderModule(m_LogicalDevice, &t_ShaderModuleCreateInfo, nullptr, &t_Module) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not create Shader Module!");
+	}
+
+	return t_Module;
 }
 
 

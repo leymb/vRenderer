@@ -11,5 +11,6 @@
 #include "framework.h"
 #include "vRenderer/vRenderer.h"
 #include "vRenderer/helper_structs/RenderingHelpers.h"
+#include "vRenderer/helpers/helpers.h"
 
 #endif //PCH_H

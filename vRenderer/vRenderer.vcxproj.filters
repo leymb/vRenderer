@@ -27,6 +27,12 @@
     <ClInclude Include="include\vRenderer\helper_structs\RenderingHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\vRenderer\helpers\helpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vRenderer\helpers\VulkanHelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
