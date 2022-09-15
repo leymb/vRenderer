@@ -179,6 +179,7 @@ private:
 	VkFormat m_SwapChainFormat;
 	VkExtent2D m_SwapChainExtent;
 
+	VkRenderPass m_MainRenderPass;
 	VkPipelineLayout m_PipelineLayout;
 };
 

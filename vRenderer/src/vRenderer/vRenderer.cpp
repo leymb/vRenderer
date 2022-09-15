@@ -32,6 +32,7 @@ bool VRenderer::Init(const int a_WindowWidth, const int a_WindowHeight)
 bool VRenderer::Terminate()
 {
 	vkDestroyPipelineLayout(m_LogicalDevice, m_PipelineLayout, nullptr);
+	vkDestroyRenderPass(m_LogicalDevice, m_MainRenderPass, nullptr);
 	DestroyImageViews();
 	vkDestroySwapchainKHR(m_LogicalDevice, m_SwapChain, nullptr);
 	vkDestroyDevice(m_LogicalDevice, nullptr);
@@ -769,6 +770,59 @@ VkShaderModule VRenderer::GenShaderModule(const std::vector<char>& a_CodeData) c
 	}
 
 	return t_Module;
+}
+
+void VRenderer::CreateRenderPass()
+{
+	// color buffer attachment
+	VkAttachmentDescription t_ColorAttachement = {};
+	t_ColorAttachement.format = m_SwapChainFormat;
+
+	// no multisampling, so keep this to 1
+	t_ColorAttachement.samples = VK_SAMPLE_COUNT_1_BIT;
+
+	// clear the framebuffer before drawing a new frame
+	t_ColorAttachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+	// store rendered contents
+	t_ColorAttachement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+	t_ColorAttachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	t_ColorAttachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+	// specify the layout of the image before and after the render pass finishes
+	t_ColorAttachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	t_ColorAttachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+
+	// attachment references
+	VkAttachmentReference t_ColorAttachmentReference = {};
+	t_ColorAttachmentReference.attachment = 0;
+	t_ColorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+
+	// sub-passes
+	VkSubpassDescription t_SubpassDescription = {};
+
+	// describe this as a Graphics pass (and not a Compute pass)
+	t_SubpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	t_SubpassDescription.colorAttachmentCount = 1;
+	t_SubpassDescription.pColorAttachments = &t_ColorAttachmentReference;
+
+
+	// create render pass
+	VkRenderPassCreateInfo t_RenderPassCreateInfo = {};
+	t_RenderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	t_RenderPassCreateInfo.attachmentCount = 1;
+	t_RenderPassCreateInfo.pAttachments = &t_ColorAttachement;
+	t_RenderPassCreateInfo.subpassCount = 1;
+	t_RenderPassCreateInfo.pSubpasses = &t_SubpassDescription;
+
+	if (vkCreateRenderPass(m_LogicalDevice, &t_RenderPassCreateInfo, nullptr, &m_MainRenderPass) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not create Renderpass!");
+	}
 }
 
 
