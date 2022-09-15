@@ -151,10 +151,20 @@ private:
 
 	void DestroyImageViews();
 
+	/// <summary>
+	/// 	Creates the graphics pipeline and the required fixed stage functions, render passes,
+	/// 	viewport and scissor descriptions.
+	/// </summary>
+
 	void CreateGraphicsPipeline();
+
+	/// <summary>	Generates a shader module from the provided vector of bytecode. </summary>
+	/// <param name="a_CodeData">	The shader bytecode loaded from a compiled .spv file.</param>
+	/// <returns>	The shader module. </returns>
 
 	VkShaderModule GenShaderModule(const std::vector<char>& a_CodeData) const;
 
+	/// <summary>	Creates a render pass. </summary>
 	void CreateRenderPass();
 
 	// GLFW members
@@ -181,5 +191,6 @@ private:
 
 	VkRenderPass m_MainRenderPass;
 	VkPipelineLayout m_PipelineLayout;
+	VkPipeline m_GraphicsPipeline;
 };
 

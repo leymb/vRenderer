@@ -31,6 +31,7 @@ bool VRenderer::Init(const int a_WindowWidth, const int a_WindowHeight)
 
 bool VRenderer::Terminate()
 {
+	vkDestroyPipeline(m_LogicalDevice, m_GraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(m_LogicalDevice, m_PipelineLayout, nullptr);
 	vkDestroyRenderPass(m_LogicalDevice, m_MainRenderPass, nullptr);
 	DestroyImageViews();
@@ -59,6 +60,7 @@ void VRenderer::InitVulkan()
 	CreateLogicalDevice(t_physicalDevice);
 	CreateSwapChain(t_physicalDevice);
 	CreateImageViews();
+	CreateRenderPass();
 	CreateGraphicsPipeline();
 }
 
@@ -689,7 +691,7 @@ void VRenderer::CreateGraphicsPipeline()
 	// generate fragment shader stage
 	VkPipelineShaderStageCreateInfo t_FragShaderStageInfo = {};
 	t_FragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	t_FragShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	t_FragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 	// specify where the shader code is located and what the entry point is
 	t_FragShaderStageInfo.module = t_FragmentShader;
 	t_FragShaderStageInfo.pName = "main";
@@ -746,12 +748,40 @@ void VRenderer::CreateGraphicsPipeline()
 	}
 
 
-
 	// make Graphics Pipeline
-	
+	VkGraphicsPipelineCreateInfo t_PipelineCreateInfo = {};
+	t_PipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	t_PipelineCreateInfo.stageCount = 2;
+	t_PipelineCreateInfo.pStages = t_ShaderStageCreateInfos;
+
+	// add all of the previously created pipeline state descriptions (fixed function stages)
+	t_PipelineCreateInfo.pVertexInputState = &t_VertexInputStateCreateInfo;
+	t_PipelineCreateInfo.pInputAssemblyState = &t_InputAssemblyStateCreateInfo;
+	t_PipelineCreateInfo.pViewportState = &t_ViewportState;
+	t_PipelineCreateInfo.pRasterizationState = &t_RasterizationStateCreateInfo;
+	t_PipelineCreateInfo.pMultisampleState = &t_MultisampleState;
+	t_PipelineCreateInfo.pDepthStencilState = nullptr;
+	t_PipelineCreateInfo.pColorBlendState = &t_ColorBlendStateCreateInfo;
+	t_PipelineCreateInfo.pDynamicState = &t_DynamicStateCreateInfo;
+
+	// pass handle to pipeline layout
+	t_PipelineCreateInfo.layout = m_PipelineLayout;
+
+	// reference render pass
+	t_PipelineCreateInfo.renderPass = m_MainRenderPass;
+	t_PipelineCreateInfo.subpass = 0;
+
+	t_PipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+	t_PipelineCreateInfo.basePipelineIndex = -1;
+
+	if (vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &t_PipelineCreateInfo, nullptr, &m_GraphicsPipeline) 
+		!= VK_SUCCESS)
+	{
+		throw std::runtime_error("Unable to create Graphics Pipeline!");
+	}
 
 
-	//destroy Shader modules at the end of the function
+	//destroy Shader modules as they are no longer needed
 	vkDestroyShaderModule(m_LogicalDevice, t_VertexShader, nullptr);
 	vkDestroyShaderModule(m_LogicalDevice, t_FragmentShader, nullptr);
 }
