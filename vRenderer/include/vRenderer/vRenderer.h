@@ -18,7 +18,7 @@ public:
 
 	bool Init(int a_WindowWidth = 800, int a_WindowHeight = 600);
 	bool Terminate();
-	static void Render();
+	void Render();
 
 	bool ShouldTerminate() const;
 
@@ -167,6 +167,20 @@ private:
 	/// <summary>	Creates a render pass. </summary>
 	void CreateRenderPass();
 
+	void CreateFrameBuffers();
+
+	void CreateCommandPool(const VkPhysicalDevice& a_PhysicalDevice);
+
+	void CreateCommandBuffer(VkPhysicalDevice& a_PhysicalDevice);
+
+	/// <summary>	Records commands to a command buffer. </summary>
+	/// <param name="a_CommandBuffer">	Command Buffer.</param>
+	/// <param name="a_ImageIndex">   	Zero-based index of the image.</param>
+
+	void RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex);
+
+	void CreateSyncObjects();
+
 	// GLFW members
 	GLFWwindow* m_Window;
 	VkSurfaceKHR m_WindowSurface;
@@ -192,5 +206,14 @@ private:
 	VkRenderPass m_MainRenderPass;
 	VkPipelineLayout m_PipelineLayout;
 	VkPipeline m_GraphicsPipeline;
+
+	std::vector<VkFramebuffer> m_Framebuffers;
+
+	VkCommandPool m_CommandPool;
+	VkCommandBuffer m_CommandBuffer;
+
+	VkSemaphore m_ImageAcquireSemaphore;
+	VkSemaphore m_RenderFinishedSemaphore;
+	VkFence m_InFlightFence;
 };
 

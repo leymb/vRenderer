@@ -155,3 +155,11 @@ inline VkPipelineLayoutCreateInfo GenPipelineCreateInfo()
 
 	return t_PipelineLayoutCreateInfo;
 }
+
+inline void DestroyFrameBuffers(std::vector<VkFramebuffer>& a_FramebufferVector, const VkDevice& a_Device)
+{
+	for (VkFramebuffer t_Buffer : a_FramebufferVector)
+	{
+		vkDestroyFramebuffer(a_Device, t_Buffer, nullptr);
+	}
+}

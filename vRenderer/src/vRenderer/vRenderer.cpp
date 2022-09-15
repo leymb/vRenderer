@@ -31,6 +31,11 @@ bool VRenderer::Init(const int a_WindowWidth, const int a_WindowHeight)
 
 bool VRenderer::Terminate()
 {
+	vkDestroySemaphore(m_LogicalDevice, m_ImageAcquireSemaphore, nullptr);
+	vkDestroySemaphore(m_LogicalDevice, m_RenderFinishedSemaphore, nullptr);
+	vkDestroyFence(m_LogicalDevice, m_InFlightFence, nullptr);
+	vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
+	DestroyFrameBuffers(m_Framebuffers, m_LogicalDevice);
 	vkDestroyPipeline(m_LogicalDevice, m_GraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(m_LogicalDevice, m_PipelineLayout, nullptr);
 	vkDestroyRenderPass(m_LogicalDevice, m_MainRenderPass, nullptr);
@@ -45,6 +50,56 @@ bool VRenderer::Terminate()
 
 void VRenderer::Render()
 {
+	glfwPollEvents();
+
+	// wait for previous frame
+	vkWaitForFences(m_LogicalDevice, 1, &m_InFlightFence, VK_TRUE, UINT64_MAX);
+
+	// reset fences
+	vkResetFences(m_LogicalDevice, 1, &m_InFlightFence);
+
+	// acquire image from swap chain
+	uint32_t t_ImageIndex;
+	vkAcquireNextImageKHR(m_LogicalDevice, m_SwapChain, UINT64_MAX, m_ImageAcquireSemaphore, VK_NULL_HANDLE, &t_ImageIndex);
+
+	// record command buffer
+	vkResetCommandBuffer(m_CommandBuffer, 0);
+	RecordCommandBuffer(m_CommandBuffer, t_ImageIndex);
+
+	//submit command buffer
+	VkSubmitInfo t_CommandBufferSubmitInfo = {};
+	t_CommandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkSemaphore t_WaitSemaphores[] = {m_ImageAcquireSemaphore};
+	VkPipelineStageFlags t_WaitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	t_CommandBufferSubmitInfo.waitSemaphoreCount = 1;
+	t_CommandBufferSubmitInfo.pWaitSemaphores = t_WaitSemaphores;
+	t_CommandBufferSubmitInfo.pWaitDstStageMask = t_WaitStages;
+
+	t_CommandBufferSubmitInfo.commandBufferCount = 1;
+	t_CommandBufferSubmitInfo.pCommandBuffers = &m_CommandBuffer;
+
+	VkSemaphore t_SignalSemaphores[] = {m_RenderFinishedSemaphore};
+	t_CommandBufferSubmitInfo.signalSemaphoreCount = 1;
+	t_CommandBufferSubmitInfo.pSignalSemaphores = t_SignalSemaphores;
+
+	if (vkQueueSubmit(m_GraphicsQueue, 1, &t_CommandBufferSubmitInfo, m_InFlightFence) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not submit Draw Command Buffer!");
+	}
+
+	VkPresentInfoKHR t_PresentInfo = {};
+	t_PresentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	t_PresentInfo.waitSemaphoreCount = 1;
+	t_PresentInfo.pWaitSemaphores = t_SignalSemaphores;
+
+	VkSwapchainKHR t_SwapChains[] = {m_SwapChain};
+	t_PresentInfo.swapchainCount = 1;
+	t_PresentInfo.pSwapchains = t_SwapChains;
+	t_PresentInfo.pImageIndices = &t_ImageIndex;
+	t_PresentInfo.pResults = nullptr;
+
+	vkQueuePresentKHR(m_PresentQueue, &t_PresentInfo);
 }
 
 bool VRenderer::ShouldTerminate() const
@@ -62,6 +117,10 @@ void VRenderer::InitVulkan()
 	CreateImageViews();
 	CreateRenderPass();
 	CreateGraphicsPipeline();
+	CreateFrameBuffers();
+	CreateCommandPool(t_physicalDevice);
+	CreateCommandBuffer(t_physicalDevice);
+	CreateSyncObjects();
 }
 
 void VRenderer::InitGlfw(const int a_WindowWidth, const int a_WindowHeight)
@@ -413,7 +472,7 @@ void VRenderer::CreateLogicalDevice(VkPhysicalDevice& a_PhysicalDevice)
 	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_GraphicsFamily.value(), 0, &m_GraphicsQueue);
 
 	// create present queue, store the queue handle for later use
-	// vkGetDeviceQueue(m_LogicalDevice, t_queueFamilies.m_PresentFamily.value(), 0, &m_PresentQueue);
+	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_PresentFamily.value(), 0, &m_PresentQueue);
 }
 
 void VRenderer::CreateWindowSurface()
@@ -840,6 +899,14 @@ void VRenderer::CreateRenderPass()
 	t_SubpassDescription.colorAttachmentCount = 1;
 	t_SubpassDescription.pColorAttachments = &t_ColorAttachmentReference;
 
+	// handle sub-pass dependencies
+	VkSubpassDependency t_SubpassDependency = {};
+	t_SubpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	t_SubpassDependency.dstSubpass = 0;
+	t_SubpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	t_SubpassDependency.srcAccessMask = 0;
+	t_SubpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	t_SubpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	// create render pass
 	VkRenderPassCreateInfo t_RenderPassCreateInfo = {};
@@ -848,10 +915,164 @@ void VRenderer::CreateRenderPass()
 	t_RenderPassCreateInfo.pAttachments = &t_ColorAttachement;
 	t_RenderPassCreateInfo.subpassCount = 1;
 	t_RenderPassCreateInfo.pSubpasses = &t_SubpassDescription;
+	t_RenderPassCreateInfo.dependencyCount = 1;
+	t_RenderPassCreateInfo.pDependencies = &t_SubpassDependency;
 
 	if (vkCreateRenderPass(m_LogicalDevice, &t_RenderPassCreateInfo, nullptr, &m_MainRenderPass) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not create Renderpass!");
+	}
+}
+
+void VRenderer::CreateFrameBuffers()
+{
+	// resize Framebuffers vector to be able to hold one frame buffer per swap chain image
+	m_Framebuffers.resize(m_SwapChainImageViews.size());
+
+	// iterate over the SwapChainImageViews vector and create a frame buffer per image
+	for (size_t i = 0; i < m_SwapChainImageViews.size(); i++)
+	{
+		VkImageView t_Attachments[] = 
+		{
+			m_SwapChainImageViews[i]
+		};
+
+		VkFramebufferCreateInfo t_BufferCreateInfo = {};
+		t_BufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		t_BufferCreateInfo.renderPass = m_MainRenderPass;
+		t_BufferCreateInfo.attachmentCount = 1;
+		t_BufferCreateInfo.pAttachments = t_Attachments;
+		t_BufferCreateInfo.width = m_SwapChainExtent.width;
+		t_BufferCreateInfo.height = m_SwapChainExtent.height;
+		t_BufferCreateInfo.layers = 1;
+
+		if (vkCreateFramebuffer(m_LogicalDevice, &t_BufferCreateInfo, nullptr, &m_Framebuffers[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Could not create Framebuffer!");
+		}
+	}
+}
+
+void VRenderer::CreateCommandPool(const VkPhysicalDevice& a_PhysicalDevice)
+{
+	const SupportedQueueFamilies t_QueueFamilyIndices = CheckSupportedQueueFamilies(a_PhysicalDevice);
+
+	// TODO move this into its own function in its own class
+	VkCommandPoolCreateInfo t_CommandPoolCreateInfo = {};
+	t_CommandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+
+	// allow command buffers to be rerecorded individually
+	t_CommandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	t_CommandPoolCreateInfo.queueFamilyIndex = t_QueueFamilyIndices.m_GraphicsFamily.value();
+
+	// create command pool
+	if (vkCreateCommandPool(m_LogicalDevice, &t_CommandPoolCreateInfo, nullptr, &m_CommandPool) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not create Command Pool!");
+	}
+}
+
+void VRenderer::CreateCommandBuffer(VkPhysicalDevice& a_PhysicalDevice)
+{
+	// allocate Command Buffers
+	VkCommandBufferAllocateInfo t_CommandBufferAllocateInfo = {};
+	t_CommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	t_CommandBufferAllocateInfo.commandPool = m_CommandPool;
+	t_CommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	t_CommandBufferAllocateInfo.commandBufferCount = 1;
+
+	if (vkAllocateCommandBuffers(m_LogicalDevice, &t_CommandBufferAllocateInfo, &m_CommandBuffer) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not allocate Command Buffer!");
+	}
+}
+
+void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex)
+{
+	// record commands to the command buffer
+	VkCommandBufferBeginInfo t_CommandBufferBeginInfo = {};
+
+	t_CommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	t_CommandBufferBeginInfo.flags = 0;
+	t_CommandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+	if (vkBeginCommandBuffer(m_CommandBuffer, &t_CommandBufferBeginInfo) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not begin recording the Command Buffer!");
+	}
+
+
+	// start render pass
+	VkRenderPassBeginInfo t_RenderPassBeginInfo = {};
+	t_RenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	t_RenderPassBeginInfo.renderPass = m_MainRenderPass;
+	t_RenderPassBeginInfo.framebuffer = m_Framebuffers[a_ImageIndex];
+	t_RenderPassBeginInfo.renderArea.offset = {0,0};
+	t_RenderPassBeginInfo.renderArea.extent = m_SwapChainExtent;
+
+	VkClearValue t_ClearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+	t_RenderPassBeginInfo.clearValueCount = 1;
+	t_RenderPassBeginInfo.pClearValues = &t_ClearColor;
+
+	vkCmdBeginRenderPass(m_CommandBuffer, &t_RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	// Bind graphics pipeline
+	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
+
+	// TODO store this somewhere for reuse
+	// Set Viewport
+	VkViewport t_Viewport = {};
+	t_Viewport.x = 0.0f;
+	t_Viewport.y = 0.0f;
+	t_Viewport.width = static_cast<float>(m_SwapChainExtent.width);
+	t_Viewport.height = static_cast<float>(m_SwapChainExtent.height);
+	t_Viewport.minDepth = 0.0f;
+	t_Viewport.maxDepth = 1.0f;
+
+	vkCmdSetViewport(m_CommandBuffer, 0, 1, &t_Viewport);
+
+	// TODO store this somewhere for reuse
+	// Set Scissors
+	VkRect2D t_Scissor = {};
+	t_Scissor.offset = {0,0};
+	t_Scissor.extent = m_SwapChainExtent;
+
+	vkCmdSetScissor(m_CommandBuffer, 0, 1, &t_Scissor);
+
+	vkCmdDraw(m_CommandBuffer, 3, 1, 0, 0);
+
+
+	// end render pass
+	vkCmdEndRenderPass(m_CommandBuffer);
+
+	// finish recording the command buffer
+	if (vkEndCommandBuffer(m_CommandBuffer) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not record Command Buffer!");
+	}
+}
+
+void VRenderer::CreateSyncObjects()
+{
+	VkSemaphoreCreateInfo t_SemaphoreCreateInfo = {};
+	t_SemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	
+	VkFenceCreateInfo t_FenceCreateInfo = {};
+	t_FenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	// create fence signaled to avoid waiting for it forever on the first frame
+	t_FenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; 
+
+	// create Semaphores
+	if (vkCreateSemaphore(m_LogicalDevice, &t_SemaphoreCreateInfo, nullptr, &m_ImageAcquireSemaphore) != VK_SUCCESS ||
+		vkCreateSemaphore(m_LogicalDevice, &t_SemaphoreCreateInfo, nullptr, &m_RenderFinishedSemaphore) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not create Semaphores!");
+	}
+
+	// create Fence
+	if (vkCreateFence(m_LogicalDevice, &t_FenceCreateInfo, nullptr, &m_InFlightFence) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Could not create Fence!");
 	}
 }
 

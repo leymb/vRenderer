@@ -4,7 +4,7 @@
 
 #include "vRenderer/vRenderer.h"
 
-void Run(const VRenderer& a_Renderer)
+void Run(VRenderer& a_Renderer)
 {
 	while (!a_Renderer.ShouldTerminate())
 	{
