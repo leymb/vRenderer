@@ -31,6 +31,9 @@ bool VRenderer::Init(const int a_WindowWidth, const int a_WindowHeight)
 
 bool VRenderer::Terminate()
 {
+	// wait for asynchronous processes to finish
+	vkDeviceWaitIdle(m_LogicalDevice);
+
 	vkDestroySemaphore(m_LogicalDevice, m_ImageAcquireSemaphore, nullptr);
 	vkDestroySemaphore(m_LogicalDevice, m_RenderFinishedSemaphore, nullptr);
 	vkDestroyFence(m_LogicalDevice, m_InFlightFence, nullptr);
@@ -714,12 +717,17 @@ void VRenderer::DestroyImageViews()
 		return;
 	}
 
-	for (size_t i = 0; 0 < m_SwapChainImageViews.size(); i++)
+#ifdef _DEBUG
+	int t_Counter = 1;
+#endif
+
+	for (VkImageView t_ImageView : m_SwapChainImageViews)
 	{
-		vkDestroyImageView(m_LogicalDevice, m_SwapChainImageViews[0], nullptr);
+		vkDestroyImageView(m_LogicalDevice, t_ImageView, nullptr);
 
 #ifdef _DEBUG
-		std::cout << "Destroying Image View: " << i << "of" << m_SwapChainImageViews.size() <<std::endl;
+		std::cout << "Destroying Image View: " << t_Counter << " of " << m_SwapChainImageViews.size() <<std::endl;
+		t_Counter++;
 #endif
 	}
 
