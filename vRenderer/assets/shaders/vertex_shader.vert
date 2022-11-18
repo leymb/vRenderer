@@ -9,9 +9,9 @@ vec2 vert_pos[3] = vec2[](
 
 // temporary per-vertex colors
 vec3 vert_colors[3] = vec3[](
-	vec3(1.0, 0.0, 0.0),
-	vec3(0.0, 1.0, 0.0),
-	vec3(0.0, 0.0, 1.0)
+	vec3(0.07, 0.75, 0.91),
+	vec3(0.76, 0.44, 0.92),
+	vec3(0.96, 0.3, 0.34)
 );
 
 layout(location = 0) out vec3 fragColor;

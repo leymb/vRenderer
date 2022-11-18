@@ -34,9 +34,7 @@ bool VRenderer::Terminate()
 	// wait for asynchronous processes to finish
 	vkDeviceWaitIdle(m_LogicalDevice);
 
-	vkDestroySemaphore(m_LogicalDevice, m_ImageAcquireSemaphore, nullptr);
-	vkDestroySemaphore(m_LogicalDevice, m_RenderFinishedSemaphore, nullptr);
-	vkDestroyFence(m_LogicalDevice, m_InFlightFence, nullptr);
+	DestroySyncObjects();
 	vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
 	DestroyFrameBuffers(m_Framebuffers, m_LogicalDevice);
 	vkDestroyPipeline(m_LogicalDevice, m_GraphicsPipeline, nullptr);
@@ -56,37 +54,38 @@ void VRenderer::Render()
 	glfwPollEvents();
 
 	// wait for previous frame
-	vkWaitForFences(m_LogicalDevice, 1, &m_InFlightFence, VK_TRUE, UINT64_MAX);
+	vkWaitForFences(m_LogicalDevice, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
 
 	// reset fences
-	vkResetFences(m_LogicalDevice, 1, &m_InFlightFence);
+	vkResetFences(m_LogicalDevice, 1, &m_InFlightFences[m_CurrentFrame]);
 
 	// acquire image from swap chain
 	uint32_t t_ImageIndex;
-	vkAcquireNextImageKHR(m_LogicalDevice, m_SwapChain, UINT64_MAX, m_ImageAcquireSemaphore, VK_NULL_HANDLE, &t_ImageIndex);
+	vkAcquireNextImageKHR(m_LogicalDevice, m_SwapChain, UINT64_MAX, m_ImageAcquiredSemaphores[m_CurrentFrame],
+	                      VK_NULL_HANDLE, &t_ImageIndex);
 
 	// record command buffer
-	vkResetCommandBuffer(m_CommandBuffer, 0);
-	RecordCommandBuffer(m_CommandBuffer, t_ImageIndex);
+	vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
+	RecordCommandBuffer(m_CommandBuffers[m_CurrentFrame], t_ImageIndex);
 
 	//submit command buffer
 	VkSubmitInfo t_CommandBufferSubmitInfo = {};
 	t_CommandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore t_WaitSemaphores[] = {m_ImageAcquireSemaphore};
+	VkSemaphore t_WaitSemaphores[] = {m_ImageAcquiredSemaphores[m_CurrentFrame]};
 	VkPipelineStageFlags t_WaitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	t_CommandBufferSubmitInfo.waitSemaphoreCount = 1;
 	t_CommandBufferSubmitInfo.pWaitSemaphores = t_WaitSemaphores;
 	t_CommandBufferSubmitInfo.pWaitDstStageMask = t_WaitStages;
 
 	t_CommandBufferSubmitInfo.commandBufferCount = 1;
-	t_CommandBufferSubmitInfo.pCommandBuffers = &m_CommandBuffer;
+	t_CommandBufferSubmitInfo.pCommandBuffers = &m_CommandBuffers[m_CurrentFrame];
 
-	VkSemaphore t_SignalSemaphores[] = {m_RenderFinishedSemaphore};
+	VkSemaphore t_SignalSemaphores[] = {m_RenderFinishedSemaphores[m_CurrentFrame]};
 	t_CommandBufferSubmitInfo.signalSemaphoreCount = 1;
 	t_CommandBufferSubmitInfo.pSignalSemaphores = t_SignalSemaphores;
 
-	if (vkQueueSubmit(m_GraphicsQueue, 1, &t_CommandBufferSubmitInfo, m_InFlightFence) != VK_SUCCESS)
+	if (vkQueueSubmit(m_GraphicsQueue, 1, &t_CommandBufferSubmitInfo, m_InFlightFences[m_CurrentFrame]) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not submit Draw Command Buffer!");
 	}
@@ -103,6 +102,9 @@ void VRenderer::Render()
 	t_PresentInfo.pResults = nullptr;
 
 	vkQueuePresentKHR(m_PresentQueue, &t_PresentInfo);
+
+	// advance frame (and loop it around after m_MaxInFlightFrames)
+	m_CurrentFrame = (m_CurrentFrame + 1) % m_MaxInFlightFrames;
 }
 
 bool VRenderer::ShouldTerminate() const
@@ -122,7 +124,7 @@ void VRenderer::InitVulkan()
 	CreateGraphicsPipeline();
 	CreateFrameBuffers();
 	CreateCommandPool(t_physicalDevice);
-	CreateCommandBuffer(t_physicalDevice);
+	CreateCommandBuffers(t_physicalDevice);
 	CreateSyncObjects();
 }
 
@@ -980,16 +982,18 @@ void VRenderer::CreateCommandPool(const VkPhysicalDevice& a_PhysicalDevice)
 	}
 }
 
-void VRenderer::CreateCommandBuffer(VkPhysicalDevice& a_PhysicalDevice)
+void VRenderer::CreateCommandBuffers(VkPhysicalDevice& a_PhysicalDevice)
 {
 	// allocate Command Buffers
+	m_CommandBuffers.resize(m_MaxInFlightFrames);
+
 	VkCommandBufferAllocateInfo t_CommandBufferAllocateInfo = {};
 	t_CommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	t_CommandBufferAllocateInfo.commandPool = m_CommandPool;
 	t_CommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	t_CommandBufferAllocateInfo.commandBufferCount = 1;
+	t_CommandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(m_CommandBuffers.size());
 
-	if (vkAllocateCommandBuffers(m_LogicalDevice, &t_CommandBufferAllocateInfo, &m_CommandBuffer) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers(m_LogicalDevice, &t_CommandBufferAllocateInfo, m_CommandBuffers.data()) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not allocate Command Buffer!");
 	}
@@ -1004,7 +1008,7 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	t_CommandBufferBeginInfo.flags = 0;
 	t_CommandBufferBeginInfo.pInheritanceInfo = nullptr;
 
-	if (vkBeginCommandBuffer(m_CommandBuffer, &t_CommandBufferBeginInfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(m_CommandBuffers[m_CurrentFrame], &t_CommandBufferBeginInfo) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not begin recording the Command Buffer!");
 	}
@@ -1022,10 +1026,10 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	t_RenderPassBeginInfo.clearValueCount = 1;
 	t_RenderPassBeginInfo.pClearValues = &t_ClearColor;
 
-	vkCmdBeginRenderPass(m_CommandBuffer, &t_RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(m_CommandBuffers[m_CurrentFrame], &t_RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	// Bind graphics pipeline
-	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
+	vkCmdBindPipeline(m_CommandBuffers[m_CurrentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
 
 	// TODO store this somewhere for reuse
 	// Set Viewport
@@ -1037,7 +1041,7 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	t_Viewport.minDepth = 0.0f;
 	t_Viewport.maxDepth = 1.0f;
 
-	vkCmdSetViewport(m_CommandBuffer, 0, 1, &t_Viewport);
+	vkCmdSetViewport(m_CommandBuffers[m_CurrentFrame], 0, 1, &t_Viewport);
 
 	// TODO store this somewhere for reuse
 	// Set Scissors
@@ -1045,16 +1049,16 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	t_Scissor.offset = {0,0};
 	t_Scissor.extent = m_SwapChainExtent;
 
-	vkCmdSetScissor(m_CommandBuffer, 0, 1, &t_Scissor);
+	vkCmdSetScissor(m_CommandBuffers[m_CurrentFrame], 0, 1, &t_Scissor);
 
-	vkCmdDraw(m_CommandBuffer, 3, 1, 0, 0);
+	vkCmdDraw(m_CommandBuffers[m_CurrentFrame], 3, 1, 0, 0);
 
 
 	// end render pass
-	vkCmdEndRenderPass(m_CommandBuffer);
+	vkCmdEndRenderPass(m_CommandBuffers[m_CurrentFrame]);
 
 	// finish recording the command buffer
-	if (vkEndCommandBuffer(m_CommandBuffer) != VK_SUCCESS)
+	if (vkEndCommandBuffer(m_CommandBuffers[m_CurrentFrame]) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not record Command Buffer!");
 	}
@@ -1062,6 +1066,12 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 
 void VRenderer::CreateSyncObjects()
 {
+	//resize semaphore & fence vectors
+	m_ImageAcquiredSemaphores.resize(m_MaxInFlightFrames);
+	m_RenderFinishedSemaphores.resize(m_MaxInFlightFrames);
+	m_InFlightFences.resize(m_MaxInFlightFrames);
+
+
 	VkSemaphoreCreateInfo t_SemaphoreCreateInfo = {};
 	t_SemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	
@@ -1070,17 +1080,31 @@ void VRenderer::CreateSyncObjects()
 	// create fence signaled to avoid waiting for it forever on the first frame
 	t_FenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; 
 
-	// create Semaphores
-	if (vkCreateSemaphore(m_LogicalDevice, &t_SemaphoreCreateInfo, nullptr, &m_ImageAcquireSemaphore) != VK_SUCCESS ||
-		vkCreateSemaphore(m_LogicalDevice, &t_SemaphoreCreateInfo, nullptr, &m_RenderFinishedSemaphore) != VK_SUCCESS)
+	// for each frame in flight
+	for (int i = 0; i < m_MaxInFlightFrames; i++)
 	{
-		throw std::runtime_error("Could not create Semaphores!");
-	}
+		// create Semaphores
+		if (vkCreateSemaphore(m_LogicalDevice, &t_SemaphoreCreateInfo, nullptr, &m_ImageAcquiredSemaphores[i]) != VK_SUCCESS ||
+			vkCreateSemaphore(m_LogicalDevice, &t_SemaphoreCreateInfo, nullptr, &m_RenderFinishedSemaphores[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Could not create Semaphores!");
+		}
 
-	// create Fence
-	if (vkCreateFence(m_LogicalDevice, &t_FenceCreateInfo, nullptr, &m_InFlightFence) != VK_SUCCESS)
+		// create Fence
+		if (vkCreateFence(m_LogicalDevice, &t_FenceCreateInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Could not create Fence!");
+		}
+	}
+}
+
+void VRenderer::DestroySyncObjects()
+{
+	for (int i = 0; i < m_MaxInFlightFrames; i++)
 	{
-		throw std::runtime_error("Could not create Fence!");
+		vkDestroySemaphore(m_LogicalDevice, m_ImageAcquiredSemaphores[i], nullptr);
+		vkDestroySemaphore(m_LogicalDevice, m_RenderFinishedSemaphores[i], nullptr);
+		vkDestroyFence(m_LogicalDevice, m_InFlightFences[i], nullptr);
 	}
 }
 

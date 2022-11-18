@@ -22,6 +22,8 @@ public:
 
 	bool ShouldTerminate() const;
 
+	const int m_MaxInFlightFrames = 2;
+
 private:
 	void InitVulkan();
 
@@ -171,7 +173,7 @@ private:
 
 	void CreateCommandPool(const VkPhysicalDevice& a_PhysicalDevice);
 
-	void CreateCommandBuffer(VkPhysicalDevice& a_PhysicalDevice);
+	void CreateCommandBuffers(VkPhysicalDevice& a_PhysicalDevice);
 
 	/// <summary>	Records commands to a command buffer. </summary>
 	/// <param name="a_CommandBuffer">	Command Buffer.</param>
@@ -180,6 +182,8 @@ private:
 	void RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex);
 
 	void CreateSyncObjects();
+
+	void DestroySyncObjects();
 
 	// GLFW members
 	GLFWwindow* m_Window;
@@ -210,10 +214,11 @@ private:
 	std::vector<VkFramebuffer> m_Framebuffers;
 
 	VkCommandPool m_CommandPool;
-	VkCommandBuffer m_CommandBuffer;
+	std::vector<VkCommandBuffer> m_CommandBuffers;
 
-	VkSemaphore m_ImageAcquireSemaphore;
-	VkSemaphore m_RenderFinishedSemaphore;
-	VkFence m_InFlightFence;
+	std::vector<VkSemaphore> m_ImageAcquiredSemaphores;
+	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
+	std::vector<VkFence> m_InFlightFences;
+	uint32_t m_CurrentFrame = 0;
 };
 
