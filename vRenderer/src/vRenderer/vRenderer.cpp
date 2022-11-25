@@ -320,6 +320,13 @@ VkPhysicalDevice VRenderer::ChoosePhysicalDevice()
 		throw std::runtime_error("No suitable GPU found!");
 	}
 
+	VkPhysicalDeviceProperties t_DeviceProperties;
+	vkGetPhysicalDeviceProperties(t_PhysicalDevice,&t_DeviceProperties);
+
+#ifdef _DEBUG
+	std::cout << "Chose " << t_DeviceProperties.deviceName << " as physical device." << std::endl; 
+#endif
+
 	return t_PhysicalDevice;
 }
 
