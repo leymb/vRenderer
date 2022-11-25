@@ -163,3 +163,124 @@ inline void DestroyFrameBuffers(std::vector<VkFramebuffer>& a_FramebufferVector,
 		vkDestroyFramebuffer(a_Device, t_Buffer, nullptr);
 	}
 }
+
+/// <summary>
+/// 	Checks whether any provided Queue supports the operations required by this application.
+/// </summary>
+/// <param name="a_QueueFamilyProperty">	The properties of the queue family for which to check
+/// 										the suitability.</param>
+/// <returns>
+/// 	True if the Queue family supports the required operations, false if it does not.
+/// </returns>
+inline bool CheckQueueFamilySupportedOperations(VkQueueFamilyProperties a_QueueFamilyProperty)
+{
+	// Check for supported operations.
+	if (a_QueueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+inline bool CheckQueueFamilySupportsPresentation(VkPhysicalDevice a_Device, uint32_t a_QueueFamilyIndex, VkSurfaceKHR a_Surface)
+{
+	// check whether the queue family supports presenting to the Window Surface
+	VkBool32 t_SupportsPresenting = false;
+	vkGetPhysicalDeviceSurfaceSupportKHR(a_Device, a_QueueFamilyIndex, a_Surface, &t_SupportsPresenting);
+
+	if (t_SupportsPresenting)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+/// <summary>
+/// 	Gets all queue families the device supports. Also checks whether any of them supports the
+/// 	operations required by this application.
+/// </summary>
+/// <param name="a_Device">	The device for which to check the supported queue families.</param>
+/// <returns>	The SupportedQueueFamilies. </returns>
+inline SupportedQueueFamilies CheckSupportedQueueFamilies(const VkPhysicalDevice a_Device, VkSurfaceKHR a_Surface)
+{
+	SupportedQueueFamilies t_QueueFamilies;
+
+	// get the number of supported queue families
+	uint32_t t_NumQueueFamilies = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(a_Device, &t_NumQueueFamilies, nullptr);
+
+	// retrieve the queue families' properties and store them
+	std::vector<VkQueueFamilyProperties> t_QueueFamilyProperties(t_NumQueueFamilies);
+	vkGetPhysicalDeviceQueueFamilyProperties(a_Device, &t_NumQueueFamilies, t_QueueFamilyProperties.data());
+
+	// loop over the queues found and check whether any of them is suitable
+	for (unsigned int i = 0; i < t_NumQueueFamilies; i++)
+	{
+		if (CheckQueueFamilySupportedOperations(t_QueueFamilyProperties[i]))
+		{
+			t_QueueFamilies.m_GraphicsFamily = i;
+		}
+
+		if (CheckQueueFamilySupportsPresentation(a_Device, i, a_Surface))
+		{
+			t_QueueFamilies.m_PresentFamily = i;
+		}
+
+		if (t_QueueFamilies.IsComplete())
+		{
+			break;
+		}
+	}
+
+	return  t_QueueFamilies;
+}
+
+/// <summary>
+/// 	Retrieves information about the Surface Formats, Present Modes and Surface Capabilities
+/// 	the Swap Chain supports.
+/// </summary>
+/// <param name="a_Device">	The physical device.</param>
+/// <returns>
+/// 	A SwapChainInformation struct containing information about supported features.
+/// </returns>
+inline SwapChainInformation GetSwapChainInformation(const VkPhysicalDevice a_Device, VkSurfaceKHR a_Surface)
+{
+	SwapChainInformation t_SwapChainInfo = {};
+
+	// query surface capabilities
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(a_Device, a_Surface, &t_SwapChainInfo.m_SurfaceCapabilities);
+
+	// query supported surface formats
+	uint32_t t_NumSupportedFormats = 0;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(a_Device, a_Surface, &t_NumSupportedFormats, nullptr);
+
+	if (t_NumSupportedFormats != 0)
+	{
+		t_SwapChainInfo.m_SupportedSurfaceFormats.resize(t_NumSupportedFormats);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(a_Device, a_Surface, &t_NumSupportedFormats,
+		                                     t_SwapChainInfo.m_SupportedSurfaceFormats.data());
+	}
+
+	// query supported presentation modes
+	uint32_t t_NumSupportedPresentationModes = 0;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(a_Device, a_Surface, &t_NumSupportedPresentationModes, nullptr);
+
+	if (t_NumSupportedPresentationModes != 0)
+	{
+		t_SwapChainInfo.m_SupportedPresentModes.resize(t_NumSupportedPresentationModes);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(a_Device, a_Surface, &t_NumSupportedPresentationModes,
+		                                          t_SwapChainInfo.m_SupportedPresentModes.data());
+	}
+
+	return  t_SwapChainInfo;
+}
+
+inline bool CheckSwapChainCompatibility(const VkPhysicalDevice a_Device, VkSurfaceKHR a_Surface)
+{
+	const SwapChainInformation t_SwapChainInfo = GetSwapChainInformation(a_Device, a_Surface);
+
+	return	!t_SwapChainInfo.m_SupportedPresentModes.empty() &&
+			!t_SwapChainInfo.m_SupportedSurfaceFormats.empty();
+}

@@ -32,17 +32,17 @@ bool VRenderer::Init(const int a_WindowWidth, const int a_WindowHeight)
 bool VRenderer::Terminate()
 {
 	// wait for asynchronous processes to finish
-	vkDeviceWaitIdle(m_LogicalDevice);
+	vkDeviceWaitIdle(m_Device.GetLogicalDevice());
 
 	DestroySyncObjects();
-	vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
-	DestroyFrameBuffers(m_Framebuffers, m_LogicalDevice);
-	vkDestroyPipeline(m_LogicalDevice, m_GraphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(m_LogicalDevice, m_PipelineLayout, nullptr);
-	vkDestroyRenderPass(m_LogicalDevice, m_MainRenderPass, nullptr);
+	vkDestroyCommandPool(m_Device.GetLogicalDevice(), m_CommandPool, nullptr);
+	DestroyFrameBuffers(m_Framebuffers, m_Device.GetLogicalDevice());
+	vkDestroyPipeline(m_Device.GetLogicalDevice(), m_GraphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(m_Device.GetLogicalDevice(), m_PipelineLayout, nullptr);
+	vkDestroyRenderPass(m_Device.GetLogicalDevice(), m_MainRenderPass, nullptr);
 	DestroyImageViews();
-	vkDestroySwapchainKHR(m_LogicalDevice, m_SwapChain, nullptr);
-	vkDestroyDevice(m_LogicalDevice, nullptr);
+	vkDestroySwapchainKHR(m_Device.GetLogicalDevice(), m_SwapChain, nullptr);
+	vkDestroyDevice(m_Device.GetLogicalDevice(), nullptr);
 	vkDestroySurfaceKHR(m_VInstance, m_WindowSurface, nullptr);
 	vkDestroyInstance(m_VInstance, nullptr);
 	glfwDestroyWindow(m_Window);
@@ -54,14 +54,14 @@ void VRenderer::Render()
 	glfwPollEvents();
 
 	// wait for previous frame
-	vkWaitForFences(m_LogicalDevice, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
+	vkWaitForFences(m_Device.GetLogicalDevice(), 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
 
 	// reset fences
-	vkResetFences(m_LogicalDevice, 1, &m_InFlightFences[m_CurrentFrame]);
+	vkResetFences(m_Device.GetLogicalDevice(), 1, &m_InFlightFences[m_CurrentFrame]);
 
 	// acquire image from swap chain
 	uint32_t t_ImageIndex;
-	vkAcquireNextImageKHR(m_LogicalDevice, m_SwapChain, UINT64_MAX, m_ImageAcquiredSemaphores[m_CurrentFrame],
+	vkAcquireNextImageKHR(m_Device.GetLogicalDevice(), m_SwapChain, UINT64_MAX, m_ImageAcquiredSemaphores[m_CurrentFrame],
 	                      VK_NULL_HANDLE, &t_ImageIndex);
 
 	// record command buffer
@@ -116,15 +116,18 @@ void VRenderer::InitVulkan()
 {
 	CreateInstance();
 	CreateWindowSurface();
-	VkPhysicalDevice t_physicalDevice = ChoosePhysicalDevice();
-	CreateLogicalDevice(t_physicalDevice);
-	CreateSwapChain(t_physicalDevice);
+
+	m_Device.ChoosePhysicalDevice(m_VInstance, m_WindowSurface, m_RequestedDeviceExtensions);
+	m_Device.CreateLogicalDevice(m_WindowSurface, m_GraphicsQueue, m_PresentQueue, m_RequestedDeviceExtensions,
+	                             m_EnabledValidationLayers);
+
+	CreateSwapChain(m_Device.GetPhysicalDevice());
 	CreateImageViews();
 	CreateRenderPass();
 	CreateGraphicsPipeline();
 	CreateFrameBuffers();
-	CreateCommandPool(t_physicalDevice);
-	CreateCommandBuffers(t_physicalDevice);
+	CreateCommandPool();
+	CreateCommandBuffers();
 	CreateSyncObjects();
 }
 
@@ -288,205 +291,6 @@ bool VRenderer::CheckSupportedValidationLayers(const std::vector<const char*>& a
 	return true;
 }
 
-//	todo make this function pick by choosing the GPU with the best rating 
-VkPhysicalDevice VRenderer::ChoosePhysicalDevice()
-{
-	VkPhysicalDevice t_PhysicalDevice = VK_NULL_HANDLE;
-	
-	// query the amount of graphics cards available
-	uint32_t t_NumDevices = 0;
-	vkEnumeratePhysicalDevices(m_VInstance, &t_NumDevices, nullptr);
-
-	// throw exception if there is no Graphics card supporting Vulkan
-	if (t_NumDevices == 0) throw std::runtime_error("Could not find GPUs supporting Vulkan!");
-
-	// store the handles to all found GPUs in an array
-	std::vector<VkPhysicalDevice> t_DeviceHandles(t_NumDevices);
-	vkEnumeratePhysicalDevices(m_VInstance, &t_NumDevices, t_DeviceHandles.data());
-
-	// loop over the physical devices and choose the first on that fulfills the requirements
-	for (const auto t_Device : t_DeviceHandles)
-	{
-		if (CheckDeviceSuitability(t_Device))
-		{
-			t_PhysicalDevice = t_Device;
-			break;
-		}
-	}
-
-	// throw a runtime error if none of the physical devices fulfill the requirements
-	if (t_PhysicalDevice == VK_NULL_HANDLE)
-	{
-		throw std::runtime_error("No suitable GPU found!");
-	}
-
-	VkPhysicalDeviceProperties t_DeviceProperties;
-	vkGetPhysicalDeviceProperties(t_PhysicalDevice,&t_DeviceProperties);
-
-#ifdef _DEBUG
-	std::cout << "Chose " << t_DeviceProperties.deviceName << " as physical device." << std::endl; 
-#endif
-
-	return t_PhysicalDevice;
-}
-
-// todo make this a system that rates the GPUs instead
-bool VRenderer::CheckDeviceSuitability(const VkPhysicalDevice a_Device)
-{
-
-	// check whether the operations required by this application are supported by the devices queue families
-	const SupportedQueueFamilies t_SupportedQueueFamilies = CheckSupportedQueueFamilies(a_Device);
-
-	return	t_SupportedQueueFamilies.IsComplete() && 
-			CheckDeviceExtensionSupport(a_Device) && 
-			CheckSwapChainCompatibility(a_Device);
-}
-
-bool VRenderer::CheckDeviceExtensionSupport(const VkPhysicalDevice a_Device) const
-{
-	// enumerate extension properties
-	uint32_t t_NumExtensions = 0;
-	vkEnumerateDeviceExtensionProperties(a_Device, nullptr, &t_NumExtensions, nullptr);
-
-	// get extension properties and store them
-	std::vector<VkExtensionProperties> t_AvailableExtensions(t_NumExtensions);
-	vkEnumerateDeviceExtensionProperties(a_Device, nullptr, &t_NumExtensions, t_AvailableExtensions.data());
-
-	std::set<std::string> t_ExtensionsRequested(m_RequestedDeviceExtensions.begin(), m_RequestedDeviceExtensions.end());
-
-	for (const auto& t_Extension : t_AvailableExtensions)
-	{
-		t_ExtensionsRequested.erase(t_Extension.extensionName);
-	}
-
-	return t_ExtensionsRequested.empty();
-}
-
-SupportedQueueFamilies VRenderer::CheckSupportedQueueFamilies(const VkPhysicalDevice a_Device)
-{
-	SupportedQueueFamilies t_QueueFamilies;
-
-	// get the number of supported queue families
-	uint32_t t_NumQueueFamilies = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(a_Device, &t_NumQueueFamilies, nullptr);
-
-	// retrieve the queue families' properties and store them
-	std::vector<VkQueueFamilyProperties> t_QueueFamilyProperties(t_NumQueueFamilies);
-	vkGetPhysicalDeviceQueueFamilyProperties(a_Device, &t_NumQueueFamilies, t_QueueFamilyProperties.data());
-
-	// loop over the queues found and check whether any of them is suitable
-	for (unsigned int i = 0; i < t_NumQueueFamilies; i++)
-	{
-		if (CheckQueueFamilySupportedOperations(t_QueueFamilyProperties[i]))
-		{
-			t_QueueFamilies.m_GraphicsFamily = i;
-		}
-
-		if (CheckQueueFamilySupportsPresentation(a_Device, i))
-		{
-			t_QueueFamilies.m_PresentFamily = i;
-		}
-
-		if (t_QueueFamilies.IsComplete())
-		{
-			break;
-		}
-	}
-
-	return  t_QueueFamilies;
-}
-
-bool VRenderer::CheckQueueFamilySupportedOperations(VkQueueFamilyProperties a_QueueFamilyProperty)
-{
-	// Check for supported operations.
-	if (a_QueueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-	{
-		return true;
-	}
-
-	return false;
-}
-
-bool VRenderer::CheckQueueFamilySupportsPresentation(const VkPhysicalDevice a_Device, const uint32_t a_QueueFamilyIndex) const
-{
-	// check whether the queue family supports presenting to the Window Surface
-	VkBool32 t_SupportsPresenting = false;
-	vkGetPhysicalDeviceSurfaceSupportKHR(a_Device, a_QueueFamilyIndex, m_WindowSurface, &t_SupportsPresenting);
-
-	if (t_SupportsPresenting)
-	{
-		return true;
-	}
-
-	return false;
-}
-
-void VRenderer::CreateLogicalDevice(VkPhysicalDevice& a_PhysicalDevice)
-{
-	// set the number of queues used from each queue family
-	SupportedQueueFamilies t_QueueFamilies = CheckSupportedQueueFamilies(a_PhysicalDevice);
-
-	// create vector of creation info structs for all unique queue families
-	std::vector<VkDeviceQueueCreateInfo> t_QueueCreateInfos;
-	std::set<uint32_t> t_UniqueQueueFamilies = {t_QueueFamilies.m_GraphicsFamily.value(), t_QueueFamilies.m_PresentFamily.value()};
-
-	float t_QueuePriorities = 1.0f;
-	for (uint32_t t_QueueFamily : t_UniqueQueueFamilies)
-	{
-		VkDeviceQueueCreateInfo t_QueueInfo = {};
-		t_QueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		t_QueueInfo.queueFamilyIndex = t_QueueFamily;
-		t_QueueInfo.queueCount = 1;
-		t_QueueInfo.pQueuePriorities = &t_QueuePriorities;
-
-		// add the newly created queue create info to the vector
-		t_QueueCreateInfos.push_back(t_QueueInfo);
-	}
-
-	VkDeviceQueueCreateInfo t_DeviceQueueCreateInfo = {};
-	t_DeviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	t_DeviceQueueCreateInfo.queueFamilyIndex = t_QueueFamilies.m_GraphicsFamily.value();
-
-	// only one queue (with graphics capabilities) is currently required as all command buffers
-	// can be created on separate threats and then submitted all at once
-	t_DeviceQueueCreateInfo.queueCount = 1;
-
-	constexpr float t_QueuePriority = 1.0f;
-	t_DeviceQueueCreateInfo.pQueuePriorities = &t_QueuePriority;
-
-	// TODO specify the actual features later when they become relevant
-	VkPhysicalDeviceFeatures t_PhysicalDeviceFeatures = {};
-
-	// create the logical device
-	VkDeviceCreateInfo t_LogicalDeviceCreateInfo = {};
-	t_LogicalDeviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	t_LogicalDeviceCreateInfo.pQueueCreateInfos = t_QueueCreateInfos.data();
-	t_LogicalDeviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(t_QueueCreateInfos.size());
-
-	t_LogicalDeviceCreateInfo.pEnabledFeatures = &t_PhysicalDeviceFeatures;
-
-	t_LogicalDeviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(m_RequestedDeviceExtensions.size());
-	t_LogicalDeviceCreateInfo.ppEnabledExtensionNames = m_RequestedDeviceExtensions.data();
-
-#ifdef _DEBUG
-	t_LogicalDeviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(m_EnabledValidationLayers.size());
-	t_LogicalDeviceCreateInfo.ppEnabledLayerNames = m_EnabledValidationLayers.data();
-#else
-	t_logicalDeviceCreateInfo.enabledLayerCount = 0;
-#endif
-
-	if(vkCreateDevice(a_PhysicalDevice, &t_LogicalDeviceCreateInfo, nullptr, &m_LogicalDevice) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to create logical device!");
-	}
-
-	// create Graphics Queue, store the queue handles for later use
-	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_GraphicsFamily.value(), 0, &m_GraphicsQueue);
-
-	// create present queue, store the queue handle for later use
-	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_PresentFamily.value(), 0, &m_PresentQueue);
-}
-
 void VRenderer::CreateWindowSurface()
 {
 	if (glfwCreateWindowSurface(m_VInstance, m_Window, nullptr, &m_WindowSurface) != VK_SUCCESS)
@@ -628,7 +432,7 @@ void VRenderer::CreateSwapChain(const VkPhysicalDevice a_Device)
 	t_SwapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	// define how the swap chain is supposed to handle images shared between multiple queues
-	SupportedQueueFamilies t_SupportedQueueFamilies = CheckSupportedQueueFamilies(a_Device);
+	SupportedQueueFamilies t_SupportedQueueFamilies = CheckSupportedQueueFamilies(a_Device, m_WindowSurface);
 	uint32_t t_QueueFamilyIndices[] = {
 		t_SupportedQueueFamilies.m_GraphicsFamily.value(), t_SupportedQueueFamilies.m_PresentFamily.value()
 	};
@@ -663,16 +467,16 @@ void VRenderer::CreateSwapChain(const VkPhysicalDevice a_Device)
 
 	t_SwapChainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	if (vkCreateSwapchainKHR(m_LogicalDevice, &t_SwapChainCreateInfo, nullptr, &m_SwapChain) != VK_SUCCESS)
+	if (vkCreateSwapchainKHR(m_Device.GetLogicalDevice(), &t_SwapChainCreateInfo, nullptr, &m_SwapChain) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not create Swap Chain!");
 	}
 
 	// store the handles to the images contained in the Swap Chain
 	uint32_t t_NumSwapChainImages = 0;
-	vkGetSwapchainImagesKHR(m_LogicalDevice, m_SwapChain, &t_NumSwapChainImages, nullptr);
+	vkGetSwapchainImagesKHR(m_Device.GetLogicalDevice(), m_SwapChain, &t_NumSwapChainImages, nullptr);
 	m_SwapChainImages.resize(t_NumSwapChainImages);
-	vkGetSwapchainImagesKHR(m_LogicalDevice, m_SwapChain, &t_NumSwapChainImages, m_SwapChainImages.data());
+	vkGetSwapchainImagesKHR(m_Device.GetLogicalDevice(), m_SwapChain, &t_NumSwapChainImages, m_SwapChainImages.data());
 
 	// store swap chain format and extent
 	m_SwapChainFormat = t_SurfaceFormat.format;
@@ -709,7 +513,7 @@ void VRenderer::CreateImageViews()
 		t_ImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 		t_ImageViewCreateInfo.subresourceRange.layerCount = 1;
 
-		if (vkCreateImageView(m_LogicalDevice, &t_ImageViewCreateInfo, nullptr, &m_SwapChainImageViews[i]) != VK_SUCCESS)
+		if (vkCreateImageView(m_Device.GetLogicalDevice(), &t_ImageViewCreateInfo, nullptr, &m_SwapChainImageViews[i]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Could not create image view!");
 		}
@@ -732,7 +536,7 @@ void VRenderer::DestroyImageViews()
 
 	for (VkImageView t_ImageView : m_SwapChainImageViews)
 	{
-		vkDestroyImageView(m_LogicalDevice, t_ImageView, nullptr);
+		vkDestroyImageView(m_Device.GetLogicalDevice(), t_ImageView, nullptr);
 
 #ifdef _DEBUG
 		std::cout << "Destroying Image View: " << t_Counter << " of " << m_SwapChainImageViews.size() <<std::endl;
@@ -818,7 +622,7 @@ void VRenderer::CreateGraphicsPipeline()
 	// generate Pipeline Layout
 	VkPipelineLayoutCreateInfo t_PipelineLayoutCreateInfo = GenPipelineCreateInfo();
 
-	if (vkCreatePipelineLayout(m_LogicalDevice, &t_PipelineLayoutCreateInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(m_Device.GetLogicalDevice(), &t_PipelineLayoutCreateInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not create Pipeline Layout!");
 	}
@@ -850,7 +654,7 @@ void VRenderer::CreateGraphicsPipeline()
 	t_PipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 	t_PipelineCreateInfo.basePipelineIndex = -1;
 
-	if (vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &t_PipelineCreateInfo, nullptr, &m_GraphicsPipeline) 
+	if (vkCreateGraphicsPipelines(m_Device.GetLogicalDevice(), VK_NULL_HANDLE, 1, &t_PipelineCreateInfo, nullptr, &m_GraphicsPipeline) 
 		!= VK_SUCCESS)
 	{
 		throw std::runtime_error("Unable to create Graphics Pipeline!");
@@ -858,11 +662,11 @@ void VRenderer::CreateGraphicsPipeline()
 
 
 	//destroy Shader modules as they are no longer needed
-	vkDestroyShaderModule(m_LogicalDevice, t_VertexShader, nullptr);
-	vkDestroyShaderModule(m_LogicalDevice, t_FragmentShader, nullptr);
+	vkDestroyShaderModule(m_Device.GetLogicalDevice(), t_VertexShader, nullptr);
+	vkDestroyShaderModule(m_Device.GetLogicalDevice(), t_FragmentShader, nullptr);
 }
 
-VkShaderModule VRenderer::GenShaderModule(const std::vector<char>& a_CodeData) const
+VkShaderModule VRenderer::GenShaderModule(const std::vector<char>& a_CodeData)
 {
 	VkShaderModuleCreateInfo t_ShaderModuleCreateInfo = {};
 	t_ShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -870,7 +674,7 @@ VkShaderModule VRenderer::GenShaderModule(const std::vector<char>& a_CodeData) c
 	t_ShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(a_CodeData.data());
 
 	VkShaderModule t_Module;
-	if (vkCreateShaderModule(m_LogicalDevice, &t_ShaderModuleCreateInfo, nullptr, &t_Module) != VK_SUCCESS)
+	if (vkCreateShaderModule(m_Device.GetLogicalDevice(), &t_ShaderModuleCreateInfo, nullptr, &t_Module) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not create Shader Module!");
 	}
@@ -935,7 +739,7 @@ void VRenderer::CreateRenderPass()
 	t_RenderPassCreateInfo.dependencyCount = 1;
 	t_RenderPassCreateInfo.pDependencies = &t_SubpassDependency;
 
-	if (vkCreateRenderPass(m_LogicalDevice, &t_RenderPassCreateInfo, nullptr, &m_MainRenderPass) != VK_SUCCESS)
+	if (vkCreateRenderPass(m_Device.GetLogicalDevice(), &t_RenderPassCreateInfo, nullptr, &m_MainRenderPass) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not create Renderpass!");
 	}
@@ -963,16 +767,16 @@ void VRenderer::CreateFrameBuffers()
 		t_BufferCreateInfo.height = m_SwapChainExtent.height;
 		t_BufferCreateInfo.layers = 1;
 
-		if (vkCreateFramebuffer(m_LogicalDevice, &t_BufferCreateInfo, nullptr, &m_Framebuffers[i]) != VK_SUCCESS)
+		if (vkCreateFramebuffer(m_Device.GetLogicalDevice(), &t_BufferCreateInfo, nullptr, &m_Framebuffers[i]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Could not create Framebuffer!");
 		}
 	}
 }
 
-void VRenderer::CreateCommandPool(const VkPhysicalDevice& a_PhysicalDevice)
+void VRenderer::CreateCommandPool()
 {
-	const SupportedQueueFamilies t_QueueFamilyIndices = CheckSupportedQueueFamilies(a_PhysicalDevice);
+	const SupportedQueueFamilies t_QueueFamilyIndices = CheckSupportedQueueFamilies(m_Device.GetPhysicalDevice(), m_WindowSurface);
 
 	// TODO move this into its own function in its own class
 	VkCommandPoolCreateInfo t_CommandPoolCreateInfo = {};
@@ -983,13 +787,13 @@ void VRenderer::CreateCommandPool(const VkPhysicalDevice& a_PhysicalDevice)
 	t_CommandPoolCreateInfo.queueFamilyIndex = t_QueueFamilyIndices.m_GraphicsFamily.value();
 
 	// create command pool
-	if (vkCreateCommandPool(m_LogicalDevice, &t_CommandPoolCreateInfo, nullptr, &m_CommandPool) != VK_SUCCESS)
+	if (vkCreateCommandPool(m_Device.GetLogicalDevice(), &t_CommandPoolCreateInfo, nullptr, &m_CommandPool) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not create Command Pool!");
 	}
 }
 
-void VRenderer::CreateCommandBuffers(VkPhysicalDevice& a_PhysicalDevice)
+void VRenderer::CreateCommandBuffers()
 {
 	// allocate Command Buffers
 	m_CommandBuffers.resize(m_MaxInFlightFrames);
@@ -1000,7 +804,7 @@ void VRenderer::CreateCommandBuffers(VkPhysicalDevice& a_PhysicalDevice)
 	t_CommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	t_CommandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(m_CommandBuffers.size());
 
-	if (vkAllocateCommandBuffers(m_LogicalDevice, &t_CommandBufferAllocateInfo, m_CommandBuffers.data()) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers(m_Device.GetLogicalDevice(), &t_CommandBufferAllocateInfo, m_CommandBuffers.data()) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Could not allocate Command Buffer!");
 	}
@@ -1091,14 +895,14 @@ void VRenderer::CreateSyncObjects()
 	for (int i = 0; i < m_MaxInFlightFrames; i++)
 	{
 		// create Semaphores
-		if (vkCreateSemaphore(m_LogicalDevice, &t_SemaphoreCreateInfo, nullptr, &m_ImageAcquiredSemaphores[i]) != VK_SUCCESS ||
-			vkCreateSemaphore(m_LogicalDevice, &t_SemaphoreCreateInfo, nullptr, &m_RenderFinishedSemaphores[i]) != VK_SUCCESS)
+		if (vkCreateSemaphore(m_Device.GetLogicalDevice(), &t_SemaphoreCreateInfo, nullptr, &m_ImageAcquiredSemaphores[i]) != VK_SUCCESS ||
+			vkCreateSemaphore(m_Device.GetLogicalDevice(), &t_SemaphoreCreateInfo, nullptr, &m_RenderFinishedSemaphores[i]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Could not create Semaphores!");
 		}
 
 		// create Fence
-		if (vkCreateFence(m_LogicalDevice, &t_FenceCreateInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS)
+		if (vkCreateFence(m_Device.GetLogicalDevice(), &t_FenceCreateInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Could not create Fence!");
 		}
@@ -1109,9 +913,9 @@ void VRenderer::DestroySyncObjects()
 {
 	for (int i = 0; i < m_MaxInFlightFrames; i++)
 	{
-		vkDestroySemaphore(m_LogicalDevice, m_ImageAcquiredSemaphores[i], nullptr);
-		vkDestroySemaphore(m_LogicalDevice, m_RenderFinishedSemaphores[i], nullptr);
-		vkDestroyFence(m_LogicalDevice, m_InFlightFences[i], nullptr);
+		vkDestroySemaphore(m_Device.GetLogicalDevice(), m_ImageAcquiredSemaphores[i], nullptr);
+		vkDestroySemaphore(m_Device.GetLogicalDevice(), m_RenderFinishedSemaphores[i], nullptr);
+		vkDestroyFence(m_Device.GetLogicalDevice(), m_InFlightFences[i], nullptr);
 	}
 }
 

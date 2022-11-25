@@ -33,12 +33,18 @@
     <ClInclude Include="include\vRenderer\helpers\VulkanHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\vRenderer\Device.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\vRenderer\vRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vRenderer\Device.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

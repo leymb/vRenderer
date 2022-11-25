@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 #include <vulkan/vulkan_core.h>
+
+#include "Device.h"
 #include "helper_structs/RenderingHelpers.h"
 
 struct GLFWwindow;
@@ -55,56 +57,6 @@ private:
 
 	static bool CheckSupportedValidationLayers(const std::vector<const char*>& a_RequestedValidationLayers);
 
-	/// <summary>
-	/// 	This function queries all existing physical devices (graphics cards) and chooses the
-	/// 	first one that suits the provided requirements.
-	/// </summary>
-	/// <returns>	The chosen physical device. </returns>
-
-	VkPhysicalDevice ChoosePhysicalDevice();
-
-	/// <summary>	Checks device suitability. </summary>
-	/// <param name="a_Device">	The device.</param>
-	/// <returns>
-	/// 	Returns true if the device supports queue families that in turn support the operations
-	/// 	required by this application, returns false if not.
-	/// </returns>
-
-	bool CheckDeviceSuitability(VkPhysicalDevice a_Device);
-
-	/// <summary>
-	/// 	Checks whether the physical device supports the extensions indicated in
-	/// 	m_RequestedDeviceExtensions.
-	/// </summary>
-	/// <param name="a_Device">	The physical device.</param>
-	/// <returns>	True if all extensions are supported, false if not. </returns>
-
-	bool CheckDeviceExtensionSupport(VkPhysicalDevice a_Device) const;
-
-	/// <summary>
-	/// 	Gets all queue families the device supports. Also checks whether any of them supports the
-	/// 	operations required by this application.
-	/// </summary>
-	/// <param name="a_Device">	The device for which to check the supported queue families.</param>
-	/// <returns>	The SupportedQueueFamilies. </returns>
-
-	SupportedQueueFamilies CheckSupportedQueueFamilies(VkPhysicalDevice a_Device);
-
-	/// <summary>
-	/// 	Checks whether any provided Queue supports the operations required by this application.
-	/// </summary>
-	/// <param name="a_QueueFamilyProperty">	The properties of the queue family for which to check
-	/// 										the suitability.</param>
-	/// <returns>
-	/// 	True if the Queue family supports the required operations, false if it does not.
-	/// </returns>
-
-	static bool CheckQueueFamilySupportedOperations(VkQueueFamilyProperties a_QueueFamilyProperty);
-
-	bool CheckQueueFamilySupportsPresentation(VkPhysicalDevice a_Device, uint32_t a_QueueFamilyIndex) const;
-
-	void CreateLogicalDevice(VkPhysicalDevice& a_PhysicalDevice);
-
 	void CreateWindowSurface();
 
 	/// <summary>
@@ -115,10 +67,9 @@ private:
 	/// <returns>
 	/// 	A SwapChainInformation struct containing information about supported features.
 	/// </returns>
+	SwapChainInformation GetSwapChainInformation(const VkPhysicalDevice a_Device) const;
 
-	SwapChainInformation GetSwapChainInformation(VkPhysicalDevice a_Device) const;
-
-	bool CheckSwapChainCompatibility(VkPhysicalDevice a_Device) const;
+	bool CheckSwapChainCompatibility(const VkPhysicalDevice a_Device) const;
 
 	/// <summary>	Picks the swap chain surface format described by a_AvailableFormats. </summary>
 	/// <param name="a_AvailableFormats">	The available formats.</param>
@@ -164,16 +115,16 @@ private:
 	/// <param name="a_CodeData">	The shader bytecode loaded from a compiled .spv file.</param>
 	/// <returns>	The shader module. </returns>
 
-	VkShaderModule GenShaderModule(const std::vector<char>& a_CodeData) const;
+	VkShaderModule GenShaderModule(const std::vector<char>& a_CodeData);
 
 	/// <summary>	Creates a render pass. </summary>
 	void CreateRenderPass();
 
 	void CreateFrameBuffers();
 
-	void CreateCommandPool(const VkPhysicalDevice& a_PhysicalDevice);
+	void CreateCommandPool();
 
-	void CreateCommandBuffers(VkPhysicalDevice& a_PhysicalDevice);
+	void CreateCommandBuffers();
 
 	/// <summary>	Records commands to a command buffer. </summary>
 	/// <param name="a_CommandBuffer">	Command Buffer.</param>
@@ -196,7 +147,7 @@ private:
 	const std::vector<const char*> m_EnabledValidationLayers{};
 	const std::vector<const char*> m_RequestedDeviceExtensions{};
 
-	VkDevice m_LogicalDevice;
+	Device m_Device;
 
 	VkQueue m_GraphicsQueue;
 	VkQueue m_PresentQueue;
