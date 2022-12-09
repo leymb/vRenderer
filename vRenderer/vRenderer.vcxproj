@@ -188,6 +188,7 @@
     <ClInclude Include="include\vRenderer\helpers\helpers.h" />
     <ClInclude Include="include\vRenderer\helpers\VulkanHelpers.h" />
     <ClInclude Include="include\vRenderer\helper_structs\RenderingHelpers.h" />
+    <ClInclude Include="include\vRenderer\helper_structs\Vertex.h" />
     <ClInclude Include="include\vRenderer\vRenderer.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>

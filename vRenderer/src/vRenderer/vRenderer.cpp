@@ -12,6 +12,14 @@
 #include <stdexcept>
 #include <vector>
 
+#include "vRenderer/helper_structs/Vertex.h"
+
+static std::vector<Vertex> s_tri_vertices = {
+	{{0.0f, -0.5f}, {0.07f, 0.75f, 0.91f}},
+    {{0.5f, 0.5f}, {0.76f, 0.44f, 0.92f}},
+    {{-0.5f, 0.5f}, {0.96f, 0.3f, 0.34f}}
+};
+
 VRenderer::VRenderer(): m_Window(nullptr),
                         m_EnabledValidationLayers({"VK_LAYER_KHRONOS_validation"}),
 						m_RequestedDeviceExtensions({VK_KHR_SWAPCHAIN_EXTENSION_NAME})
@@ -589,7 +597,9 @@ void VRenderer::CreateGraphicsPipeline()
 	VkPipelineDynamicStateCreateInfo t_DynamicStateCreateInfo = GenDynamicStateCreateInfo(t_DynStates);
 
 	// create VertexInputStateCreateInfo
-	VkPipelineVertexInputStateCreateInfo t_VertexInputStateCreateInfo = GenVertexInputStateCreateInfo();
+	VkVertexInputBindingDescription t_BindingDesc = Vertex::GenInputBindingDesc();
+	std::array<VkVertexInputAttributeDescription, 2> t_AttributeDesc = Vertex::GenInputAttributeDesc();
+	VkPipelineVertexInputStateCreateInfo t_VertexInputStateCreateInfo = GenVertexInputStateCreateInfo(t_BindingDesc, t_AttributeDesc);
 
 	// generate Input Assembly stage
 	VkPipelineInputAssemblyStateCreateInfo t_InputAssemblyStateCreateInfo = GenInputAssemblyStateCreateInfo();

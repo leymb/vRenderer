@@ -3,6 +3,8 @@
 
 #include <vector>
 
+#include "vRenderer/helper_structs/Vertex.h"
+
 inline VkPipelineDynamicStateCreateInfo GenDynamicStateCreateInfo(const std::vector<VkDynamicState>& a_DynamicStates)
 {
 	VkPipelineDynamicStateCreateInfo t_DynamicStateCreateInfo = {};
@@ -14,17 +16,17 @@ inline VkPipelineDynamicStateCreateInfo GenDynamicStateCreateInfo(const std::vec
 	return t_DynamicStateCreateInfo;
 }
 
-inline VkPipelineVertexInputStateCreateInfo GenVertexInputStateCreateInfo()
+inline VkPipelineVertexInputStateCreateInfo GenVertexInputStateCreateInfo(
+	VkVertexInputBindingDescription& a_BindingDesc, std::array<VkVertexInputAttributeDescription, 2>& a_AttributeDesc)
 {
-	// this allows for defining the format of vertex data passed to the vertex shader
-	// as right now the vertex data is hard-coded in the shader, this is left
-	// intentionally empty
 	VkPipelineVertexInputStateCreateInfo t_VertexInputStateCreateInfo = {};
 	t_VertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	t_VertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
-	t_VertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
-	t_VertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
-	t_VertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
+
+	t_VertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+	t_VertexInputStateCreateInfo.pVertexBindingDescriptions = &a_BindingDesc;
+
+	t_VertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(a_AttributeDesc.size());
+	t_VertexInputStateCreateInfo.pVertexAttributeDescriptions = a_AttributeDesc.data();
 
 	return t_VertexInputStateCreateInfo;
 }
