@@ -50,6 +50,9 @@ bool VRenderer::Terminate()
 	vkDestroyRenderPass(m_Device.GetLogicalDevice(), m_MainRenderPass, nullptr);
 	DestroyImageViews();
 	vkDestroySwapchainKHR(m_Device.GetLogicalDevice(), m_SwapChain, nullptr);
+
+	m_VertexBuffer.DestroyBuffer(m_Device.GetLogicalDevice());
+
 	vkDestroyDevice(m_Device.GetLogicalDevice(), nullptr);
 	vkDestroySurfaceKHR(m_VInstance, m_WindowSurface, nullptr);
 	vkDestroyInstance(m_VInstance, nullptr);
@@ -95,7 +98,7 @@ void VRenderer::Render()
 
 	if (vkQueueSubmit(m_GraphicsQueue, 1, &t_CommandBufferSubmitInfo, m_InFlightFences[m_CurrentFrame]) != VK_SUCCESS)
 	{
-		throw std::runtime_error("Could not submit Draw Command Buffer!");
+		throw std::runtime_error("Could not submit Draw Command VertexBuffer!");
 	}
 
 	VkPresentInfoKHR t_PresentInfo = {};
@@ -135,6 +138,9 @@ void VRenderer::InitVulkan()
 	CreateGraphicsPipeline();
 	CreateFrameBuffers();
 	CreateCommandPool();
+
+	m_VertexBuffer.CreateVertexBuffer(s_tri_vertices, m_Device);
+
 	CreateCommandBuffers();
 	CreateSyncObjects();
 }
@@ -816,7 +822,7 @@ void VRenderer::CreateCommandBuffers()
 
 	if (vkAllocateCommandBuffers(m_Device.GetLogicalDevice(), &t_CommandBufferAllocateInfo, m_CommandBuffers.data()) != VK_SUCCESS)
 	{
-		throw std::runtime_error("Could not allocate Command Buffer!");
+		throw std::runtime_error("Could not allocate Command VertexBuffer!");
 	}
 }
 
@@ -831,7 +837,7 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 
 	if (vkBeginCommandBuffer(m_CommandBuffers[m_CurrentFrame], &t_CommandBufferBeginInfo) != VK_SUCCESS)
 	{
-		throw std::runtime_error("Could not begin recording the Command Buffer!");
+		throw std::runtime_error("Could not begin recording the Command VertexBuffer!");
 	}
 
 
@@ -851,6 +857,11 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 
 	// Bind graphics pipeline
 	vkCmdBindPipeline(m_CommandBuffers[m_CurrentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
+
+	// Bind Vertex VertexBuffer
+	VkBuffer t_VertexBuffers[] = {m_VertexBuffer.GetBuffer()};
+	VkDeviceSize t_Offsets[] = {0};
+	vkCmdBindVertexBuffers(m_CommandBuffers[m_CurrentFrame], 0, 1, t_VertexBuffers, t_Offsets);
 
 	// TODO store this somewhere for reuse
 	// Set Viewport
@@ -872,7 +883,7 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 
 	vkCmdSetScissor(m_CommandBuffers[m_CurrentFrame], 0, 1, &t_Scissor);
 
-	vkCmdDraw(m_CommandBuffers[m_CurrentFrame], 3, 1, 0, 0);
+	vkCmdDraw(m_CommandBuffers[m_CurrentFrame], static_cast<uint32_t>(s_tri_vertices.size()), 1, 0, 0);
 
 
 	// end render pass
@@ -881,7 +892,7 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	// finish recording the command buffer
 	if (vkEndCommandBuffer(m_CommandBuffers[m_CurrentFrame]) != VK_SUCCESS)
 	{
-		throw std::runtime_error("Could not record Command Buffer!");
+		throw std::runtime_error("Could not record Command VertexBuffer!");
 	}
 }
 

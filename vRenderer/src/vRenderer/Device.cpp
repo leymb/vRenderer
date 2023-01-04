@@ -12,7 +12,7 @@ Device::Device()
 	
 }
 
-VkDevice Device::GetLogicalDevice()
+VkDevice Device::GetLogicalDevice() const
 {
 	return m_LogicalDevice;
 }
@@ -192,7 +192,8 @@ void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsQueu
 	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_PresentFamily.value(), 0, &a_PresentQueue);
 }
 
-VkPhysicalDevice Device::GetPhysicalDevice()
+// Note: might cause issues because it returns a copy, not a reference
+VkPhysicalDevice Device::GetPhysicalDevice() const
 {
 	return m_PhysicalDevice;
 }

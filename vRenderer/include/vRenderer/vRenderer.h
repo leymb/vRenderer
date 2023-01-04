@@ -2,6 +2,7 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
+#include "VertexBuffer.h"
 #include "Device.h"
 #include "helper_structs/RenderingHelpers.h"
 
@@ -127,7 +128,7 @@ private:
 	void CreateCommandBuffers();
 
 	/// <summary>	Records commands to a command buffer. </summary>
-	/// <param name="a_CommandBuffer">	Command Buffer.</param>
+	/// <param name="a_CommandBuffer">	Command VertexBuffer.</param>
 	/// <param name="a_ImageIndex">   	Zero-based index of the image.</param>
 
 	void RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex);
@@ -171,5 +172,7 @@ private:
 	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 	std::vector<VkFence> m_InFlightFences;
 	uint32_t m_CurrentFrame = 0;
+
+	VertexBuffer m_VertexBuffer;
 };
 

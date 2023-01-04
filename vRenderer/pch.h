@@ -12,5 +12,7 @@
 #include "vRenderer/vRenderer.h"
 #include "vRenderer/helper_structs/RenderingHelpers.h"
 #include "vRenderer/helpers/helpers.h"
+#include "vRenderer/Device.h"
+#include "vRenderer/VertexBuffer.h"
 
 #endif //PCH_H

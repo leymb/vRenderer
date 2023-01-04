@@ -27,8 +27,8 @@ public:
 	                         const std::vector<const char*>& a_RequestedDeviceExtensions,
 	                         const std::vector<const char*>& a_EnabledValidationLayers);
 
-	VkPhysicalDevice GetPhysicalDevice();
-	VkDevice GetLogicalDevice();
+	VkPhysicalDevice GetPhysicalDevice() const;
+	VkDevice GetLogicalDevice() const;
 
 private:
 
