@@ -5,6 +5,7 @@
 #include "VertexBuffer.h"
 #include "Device.h"
 #include "helper_structs/RenderingHelpers.h"
+#include <vRenderer/SwapChain.h>
 
 struct GLFWwindow;
 struct SupportedQueueFamilies;
@@ -61,51 +62,6 @@ private:
 	void CreateWindowSurface();
 
 	/// <summary>
-	/// 	Retrieves information about the Surface Formats, Present Modes and Surface Capabilities
-	/// 	the Swap Chain supports.
-	/// </summary>
-	/// <param name="a_Device">	The physical device.</param>
-	/// <returns>
-	/// 	A SwapChainInformation struct containing information about supported features.
-	/// </returns>
-	SwapChainInformation GetSwapChainInformation(const VkPhysicalDevice a_Device) const;
-
-	bool CheckSwapChainCompatibility(const VkPhysicalDevice a_Device) const;
-
-	/// <summary>	Picks the swap chain surface format described by a_AvailableFormats. </summary>
-	/// <param name="a_AvailableFormats">	The available formats.</param>
-	/// <returns>
-	/// 	If found, returns a SwapChainFormat with a 32-bit SRGB format the SRGB color space
-	/// 	(VK_FORMAT_B8G8R8A8_SRGB and VK_COLOR_SPACE_SRGB_NONLINEAR_KHR). If no format is found
-	/// 	that satisfies these conditions, returns the first element found in a_AvailableFormats.
-	/// </returns>
-
-	VkSurfaceFormatKHR PickSwapChainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& a_AvailableFormats) const;
-
-	/// <summary>
-	/// 	Picks the most suitable swap chain present mode found in a_AvailablePresentModes.
-	/// </summary>
-	/// <param name="a_AvailablePresentModes">	The available present modes.</param>
-	/// <returns>
-	/// 	If found in the available present modes, returns VK_PRESENT_MODE_MAILBOX_KHR. If not,
-	/// 	returns VK_PRESENT_MODE_FIFO_KHR.
-	/// </returns>
-
-	VkPresentModeKHR PickSwapChainPresentMode(const std::vector<VkPresentModeKHR>& a_AvailablePresentModes);
-
-	/// <summary>	Picks the extent of the swap chain. </summary>
-	/// <param name="a_SurfaceCapabilities">	The surface capabilities.</param>
-	/// <returns>	Returns a VkExtent2D. </returns>
-
-	VkExtent2D PickSwapExtent(const VkSurfaceCapabilitiesKHR& a_SurfaceCapabilities) const;
-
-	void CreateSwapChain(VkPhysicalDevice a_Device);
-
-	void CreateImageViews();
-
-	void DestroyImageViews();
-
-	/// <summary>
 	/// 	Creates the graphics pipeline and the required fixed stage functions, render passes,
 	/// 	viewport and scissor descriptions.
 	/// </summary>
@@ -149,15 +105,16 @@ private:
 	const std::vector<const char*> m_RequestedDeviceExtensions{};
 
 	Device m_Device;
+	SwapChain m_SwapChain;
 
 	VkQueue m_GraphicsQueue;
 	VkQueue m_PresentQueue;
 
-	VkSwapchainKHR m_SwapChain;
+	/*VkSwapchainKHR m_SwapChain;
 	std::vector<VkImage> m_SwapChainImages;
 	std::vector<VkImageView> m_SwapChainImageViews;
 	VkFormat m_SwapChainFormat;
-	VkExtent2D m_SwapChainExtent;
+	VkExtent2D m_SwapChainExtent;*/
 
 	VkRenderPass m_MainRenderPass;
 	VkPipelineLayout m_PipelineLayout;

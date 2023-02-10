@@ -2,6 +2,7 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
+class SwapChain;
 class Device
 {
 public:
@@ -32,7 +33,9 @@ public:
 
 private:
 
-	bool CheckDeviceSuitability(VkPhysicalDevice a_Device, VkSurfaceKHR a_Surface, const std::vector<const char*>& a_RequestedDeviceExtensions);
+	bool CheckDeviceSuitability(VkPhysicalDevice a_Device, VkSurfaceKHR a_Surface, const std::vector<const char*>& a_RequestedDeviceExtensions) const;
+
+	static bool CheckSwapChainCompatibility(const VkPhysicalDevice& a_Device, const VkSurfaceKHR& a_WindowSurface);
 
 	bool CheckDeviceExtensionSupport(VkPhysicalDevice a_Device, const std::vector<const char*>& a_RequestedDeviceExtensions) const;
 

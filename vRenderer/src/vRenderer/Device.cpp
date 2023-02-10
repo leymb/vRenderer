@@ -6,6 +6,7 @@
 #include <set>
 
 #include "vRenderer/helpers/VulkanHelpers.h"
+#include <vRenderer/SwapChain.h>
 
 Device::Device()
 {
@@ -69,12 +70,17 @@ VkPhysicalDevice Device::ChoosePhysicalDevice(VkInstance& a_Instance, VkSurfaceK
 }
 
 /// <summary>	Checks device suitability. </summary>
-/// <param name="a_Device">	The device.</param>
+/// <param name="a_Device">					  	The device.</param>
+/// <param name="a_Surface">				  	The Window Surface.</param>
+/// <param name="a_RequestedDeviceExtensions">	The Device Extensions Required.</param>
+/// <param name="a_SwapChain">				  	[in,out] The Renderer's SwapChain.</param>
 /// <returns>
 /// 	Returns true if the device supports queue families that in turn support the operations
 /// 	required by this application, returns false if not.
 /// </returns>
-bool Device::CheckDeviceSuitability(const VkPhysicalDevice a_Device, VkSurfaceKHR a_Surface, const std::vector<const char*>& a_RequestedDeviceExtensions)
+
+bool Device::CheckDeviceSuitability(const VkPhysicalDevice a_Device, const VkSurfaceKHR a_Surface,
+                                    const std::vector<const char*>& a_RequestedDeviceExtensions) const
 {
 
 	// check whether the operations required by this application are supported by the devices queue families
@@ -83,6 +89,15 @@ bool Device::CheckDeviceSuitability(const VkPhysicalDevice a_Device, VkSurfaceKH
 	return	t_SupportedQueueFamilies.IsComplete() && 
 			CheckDeviceExtensionSupport(a_Device, a_RequestedDeviceExtensions) && 
 			CheckSwapChainCompatibility(a_Device, a_Surface);
+}
+
+bool Device::CheckSwapChainCompatibility(const VkPhysicalDevice& a_Device, const VkSurfaceKHR& a_WindowSurface)
+{
+	const auto [t_SurfaceCapabilities, t_SupportedSurfaceFormats, t_SupportedPresentModes] = SwapChain::GetSwapChainInformation(
+		a_Device, a_WindowSurface);
+
+	return	!t_SupportedPresentModes.empty() &&
+			!t_SupportedSurfaceFormats.empty();
 }
 
 /// <summary>

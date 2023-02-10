@@ -184,6 +184,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="include\vRenderer\SwapChain.h" />
     <ClInclude Include="include\vRenderer\VertexBuffer.h" />
     <ClInclude Include="include\vRenderer\Device.h" />
     <ClInclude Include="include\vRenderer\helpers\helpers.h" />
@@ -200,6 +201,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\vRenderer\SwapChain.cpp" />
     <ClCompile Include="src\vRenderer\VertexBuffer.cpp" />
     <ClCompile Include="src\vRenderer\Device.cpp" />
     <ClCompile Include="src\vRenderer\vRenderer.cpp" />

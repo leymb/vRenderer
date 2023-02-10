@@ -14,5 +14,6 @@
 #include "vRenderer/helpers/helpers.h"
 #include "vRenderer/Device.h"
 #include "vRenderer/VertexBuffer.h"
+#include "vRenderer/SwapChain.h"
 
 #endif //PCH_H
