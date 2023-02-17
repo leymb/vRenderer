@@ -5,10 +5,8 @@
 #include "vRenderer/helpers/VulkanHelpers.h"
 
 #define GLFW_INCLUDE_VULKAN
-#include <algorithm>
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include <set>
 #include <stdexcept>
 #include <vector>
 
@@ -140,10 +138,14 @@ void VRenderer::InitVulkan()
 	CreateCommandPool();
 
 	m_VertexBuffer.CreateVertexBuffer(s_tri_vertices, m_Device);
-
+	
 	CreateCommandBuffers();
 	CreateSyncObjects();
 }
+
+/// <summary>	Initializes GLFW and creates a GLFWwindow. </summary>
+/// <param name="a_WindowWidth"> 	Width of the window.</param>
+/// <param name="a_WindowHeight">	Height of the window.</param>
 
 void VRenderer::InitGlfw(const int a_WindowWidth, const int a_WindowHeight)
 {
@@ -157,6 +159,10 @@ void VRenderer::InitGlfw(const int a_WindowWidth, const int a_WindowHeight)
 
 	m_Window = glfwCreateWindow(a_WindowWidth, a_WindowHeight, "vRenderer", nullptr, nullptr);
 }
+
+/// <summary>	Creates a Vulkan Instance and stores its handle in m_VInstance. </summary>
+/// <exception cref="std::runtime_error">	Raised when the instance could not be created.</exception>
+/// <returns>	True if it succeeds, false if it fails. </returns>
 
 bool VRenderer::CreateInstance()
 {
@@ -179,6 +185,12 @@ bool VRenderer::CreateInstance()
 
 	return true;
 }
+
+/// <summary>	Checks whether the provided list of extensions is supported. </summary>
+/// <exception cref="std::runtime_error">	Raised when a requested extension is not available.</exception>
+/// <param name="a_ExtensionCount">	Number of extensions.</param>
+/// <param name="a_Extensions">	   	The extensions.</param>
+/// <returns>	True if it succeeds, false if it fails. </returns>
 
 bool VRenderer::CheckExtensionSupport(const uint32_t a_ExtensionCount, const char** a_Extensions)
 {
@@ -262,11 +274,22 @@ void VRenderer::GenInstanceCreateData(const bool a_ValidationEnabled, InstanceCr
 	}
 }
 
+
+/// <summary>	Enables validation layers. </summary>
+
 void VRenderer::EnableValidation() const
 {
 	// throw an exception if any of the requested validation layers are not available in the system
 	CheckSupportedValidationLayers(m_EnabledValidationLayers);
 }
+
+/// <summary>	Checks whether the requested valiadtion layers are supported. </summary>
+/// <exception cref="std::runtime_error">	Raised when requested validation layer is not
+/// 										available.</exception>
+/// <param name="a_RequestedValidationLayers">	The requested validation layers.</param>
+/// <returns>
+/// 	True if the requested validation layers are supported, else throws a runtime exception.
+/// </returns>
 
 bool VRenderer::CheckSupportedValidationLayers(const std::vector<const char*>& a_RequestedValidationLayers)
 {
@@ -312,6 +335,12 @@ void VRenderer::CreateWindowSurface()
 		throw std::runtime_error("Window surface could not be created!");
 	}
 }
+
+/// <summary>
+/// 	Creates the graphics pipeline and the required fixed stage functions, render passes,
+/// 	viewport and scissor descriptions.
+/// </summary>
+/// <exception cref="std::runtime_error">	Raised when pipeline layout could not be created.</exception>
 
 void VRenderer::CreateGraphicsPipeline()
 {
@@ -432,6 +461,11 @@ void VRenderer::CreateGraphicsPipeline()
 	vkDestroyShaderModule(m_Device.GetLogicalDevice(), t_FragmentShader, nullptr);
 }
 
+/// <summary>	Generates a shader module from the provided vector of bytecode. </summary>
+/// <exception cref="std::runtime_error">	Raised when a runtime error condition occurs.</exception>
+/// <param name="a_CodeData">	The shader bytecode loaded from a compiled .spv file.</param>
+/// <returns>	The shader module. </returns>
+
 VkShaderModule VRenderer::GenShaderModule(const std::vector<char>& a_CodeData)
 {
 	VkShaderModuleCreateInfo t_ShaderModuleCreateInfo = {};
@@ -447,6 +481,9 @@ VkShaderModule VRenderer::GenShaderModule(const std::vector<char>& a_CodeData)
 
 	return t_Module;
 }
+
+/// <summary>	Creates a render pass. </summary>
+/// <exception cref="std::runtime_error">	Raised when render pass can not be created.</exception>
 
 void VRenderer::CreateRenderPass()
 {
@@ -579,6 +616,11 @@ void VRenderer::CreateCommandBuffers()
 	}
 }
 
+/// <summary>	Records commands to a command buffer. </summary>
+/// <exception cref="std::runtime_error">	Raised when a runtime error condition occurs.</exception>
+/// <param name="a_CommandBuffer">	Command VertexBuffer.</param>
+/// <param name="a_ImageIndex">   	Zero-based index of the image.</param>
+
 void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex)
 {
 	// record commands to the command buffer
@@ -694,5 +736,3 @@ void VRenderer::DestroySyncObjects()
 		vkDestroyFence(m_Device.GetLogicalDevice(), m_InFlightFences[i], nullptr);
 	}
 }
-
-

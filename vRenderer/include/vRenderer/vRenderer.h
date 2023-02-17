@@ -7,6 +7,8 @@
 #include "helper_structs/RenderingHelpers.h"
 #include <vRenderer/SwapChain.h>
 
+#include "Buffer.h"
+
 struct GLFWwindow;
 struct SupportedQueueFamilies;
 
@@ -31,50 +33,28 @@ public:
 private:
 	void InitVulkan();
 
-	/// <summary>	Initializes GLFW and creates a GLFWwindow. </summary>
-	/// <param name="a_WindowWidth"> 	Width of the window.</param>
-	/// <param name="a_WindowHeight">	Height of the window.</param>
-
 	void InitGlfw(int a_WindowWidth, int a_WindowHeight);
 
-	/// <summary>	Creates a Vulkan Instance and stores its handle in m_VInstance. </summary>
 	bool CreateInstance();
 
-	/// <summary>	Checks whether the provided list of extensions is supported. </summary>
-	/// <returns>	True if it succeeds, false if it fails. </returns>
 
 	static bool CheckExtensionSupport(uint32_t a_ExtensionCount, const char** a_Extensions);
 
 	void GenInstanceCreateData(bool a_ValidationEnabled, InstanceCreateData& a_InstanceCreateData) const;
 
-	/// <summary>	Enables validation layers. </summary>
 
 	void EnableValidation() const;
 
-	/// <summary>	Checks whether the requested valiadtion layers are supported. </summary>
-	/// <param name="a_RequestedValidationLayers">	The requested validation layers.</param>
-	/// <returns>
-	/// 	True if the requested validation layers are supported, else throws a runtime exception.
-	/// </returns>
-
 	static bool CheckSupportedValidationLayers(const std::vector<const char*>& a_RequestedValidationLayers);
+
 
 	void CreateWindowSurface();
 
-	/// <summary>
-	/// 	Creates the graphics pipeline and the required fixed stage functions, render passes,
-	/// 	viewport and scissor descriptions.
-	/// </summary>
-
 	void CreateGraphicsPipeline();
-
-	/// <summary>	Generates a shader module from the provided vector of bytecode. </summary>
-	/// <param name="a_CodeData">	The shader bytecode loaded from a compiled .spv file.</param>
-	/// <returns>	The shader module. </returns>
 
 	VkShaderModule GenShaderModule(const std::vector<char>& a_CodeData);
 
-	/// <summary>	Creates a render pass. </summary>
+
 	void CreateRenderPass();
 
 	void CreateFrameBuffers();
@@ -83,11 +63,8 @@ private:
 
 	void CreateCommandBuffers();
 
-	/// <summary>	Records commands to a command buffer. </summary>
-	/// <param name="a_CommandBuffer">	Command VertexBuffer.</param>
-	/// <param name="a_ImageIndex">   	Zero-based index of the image.</param>
-
 	void RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex);
+
 
 	void CreateSyncObjects();
 
@@ -132,4 +109,3 @@ private:
 
 	VertexBuffer m_VertexBuffer;
 };
-
