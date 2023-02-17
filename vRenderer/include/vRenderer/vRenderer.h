@@ -18,11 +18,16 @@ public:
 	VRenderer();
 
 	/// <summary>	Initializes the Renderer. </summary>
-	/// <param name="a_WindowWidth"> 	(Optional) Width of the window.</param>
-	/// <param name="a_WindowHeight">	(Optional) Height of the window.</param>
+	/// <param name="a_WindowWidth">			  	(Optional) Width of the window.</param>
+	/// <param name="a_WindowHeight">			  	(Optional) Height of the window.</param>
+	/// <param name="a_EnabledValidationLayers">  	(Optional) The enabled validation layers.</param>
+	/// <param name="a_RequestedDeviceExtensions">	(Optional) The requested device extensions.</param>
 	/// <returns>	True if it succeeds, false if it fails. </returns>
 
-	bool Init(int a_WindowWidth = 800, int a_WindowHeight = 600);
+	bool Init(int a_WindowWidth = 800, int a_WindowHeight = 600,
+	          const std::vector<const char*>& a_EnabledValidationLayers = {"VK_LAYER_KHRONOS_validation"},
+	          const std::vector<const char*>& a_RequestedDeviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
+
 	bool Terminate();
 	void Render();
 
@@ -77,21 +82,14 @@ private:
 	// Vulkan members
 	VkInstance m_VInstance = nullptr;
 
-	// TODO change these to be passed to the constructor instead to allow for outside definitions of the extensions to use
-	const std::vector<const char*> m_EnabledValidationLayers{};
-	const std::vector<const char*> m_RequestedDeviceExtensions{};
+	std::vector<const char*> m_EnabledValidationLayers{};
+	std::vector<const char*> m_RequestedDeviceExtensions{};
 
 	Device m_Device;
 	SwapChain m_SwapChain;
 
 	VkQueue m_GraphicsQueue;
 	VkQueue m_PresentQueue;
-
-	/*VkSwapchainKHR m_SwapChain;
-	std::vector<VkImage> m_SwapChainImages;
-	std::vector<VkImageView> m_SwapChainImageViews;
-	VkFormat m_SwapChainFormat;
-	VkExtent2D m_SwapChainExtent;*/
 
 	VkRenderPass m_MainRenderPass;
 	VkPipelineLayout m_PipelineLayout;

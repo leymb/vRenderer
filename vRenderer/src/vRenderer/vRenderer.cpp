@@ -18,14 +18,17 @@ static std::vector<Vertex> s_tri_vertices = {
     {{-0.5f, 0.5f}, {0.96f, 0.3f, 0.34f}}
 };
 
-VRenderer::VRenderer(): m_Window(nullptr),
-                        m_EnabledValidationLayers({"VK_LAYER_KHRONOS_validation"}),
-						m_RequestedDeviceExtensions({VK_KHR_SWAPCHAIN_EXTENSION_NAME})
+VRenderer::VRenderer(): m_Window(nullptr)
 {
 }
 
-bool VRenderer::Init(const int a_WindowWidth, const int a_WindowHeight)
+bool VRenderer::Init(const int a_WindowWidth, const int a_WindowHeight,
+                     const std::vector<const char*>& a_EnabledValidationLayers,
+                     const std::vector<const char*>& a_RequestedDeviceExtensions)
 {
+	m_EnabledValidationLayers = a_EnabledValidationLayers;
+	m_RequestedDeviceExtensions = a_RequestedDeviceExtensions;
+
 	EnableValidation();
 
 	InitGlfw(a_WindowWidth, a_WindowHeight);
