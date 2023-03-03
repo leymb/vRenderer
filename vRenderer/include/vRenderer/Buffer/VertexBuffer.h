@@ -1,5 +1,5 @@
 #pragma once
-#include "vRenderer/Buffer.h"
+#include "vRenderer/Buffer/Buffer.h"
 #include <vector>
 
 class Device;
@@ -19,5 +19,4 @@ public:
 
 	void CreateVertexBuffer(std::vector<Vertex>& a_Vertices, const Device& a_Device, VkQueue a_GraphicsQueue,
 	              VkCommandPool a_CommandPool);
-	Buffer m_StagingBuffer;
 };

@@ -13,7 +13,8 @@
 #include "vRenderer/helper_structs/RenderingHelpers.h"
 #include "vRenderer/helpers/helpers.h"
 #include "vRenderer/Device.h"
-#include "vRenderer/VertexBuffer.h"
+#include "vRenderer/Buffer/Buffer.h"
+#include "vRenderer/Buffer/VertexBuffer.h"
 #include "vRenderer/SwapChain.h"
 
 #endif //PCH_H
