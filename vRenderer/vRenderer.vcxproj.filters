@@ -39,13 +39,13 @@
     <ClInclude Include="include\vRenderer\helper_structs\Vertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\vRenderer\VertexBuffer.h">
+    <ClInclude Include="include\vRenderer\Buffer\VertexBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\vRenderer\SwapChain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\vRenderer\Buffer.h">
+    <ClInclude Include="include\vRenderer\Buffer\Buffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -59,13 +59,13 @@
     <ClCompile Include="src\vRenderer\Device.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\vRenderer\VertexBuffer.cpp">
+    <ClCompile Include="src\vRenderer\Buffer\VertexBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\vRenderer\SwapChain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\vRenderer\Buffer.cpp">
+    <ClCompile Include="src\vRenderer\Buffer\Buffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

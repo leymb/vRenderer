@@ -1,5 +1,5 @@
 #pragma once
-#include "vRenderer/Buffer.h"
+#include "vRenderer/Buffer/Buffer.h"
 #include <vector>
 
 class Device;

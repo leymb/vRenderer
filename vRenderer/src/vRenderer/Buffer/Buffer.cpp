@@ -1,6 +1,5 @@
 #include "pch.h"
-#include "vRenderer/Buffer.h"
-#include "vRenderer/helper_structs/Vertex.h"
+#include "vRenderer/Buffer/Buffer.h"
 #include "vRenderer/Device.h"
 
 Buffer::Buffer()
