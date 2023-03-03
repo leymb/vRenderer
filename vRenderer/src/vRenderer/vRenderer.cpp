@@ -12,10 +12,18 @@
 
 #include "vRenderer/helper_structs/Vertex.h"
 
-static std::vector<Vertex> s_tri_vertices = {
-	{{0.0f, -0.5f}, {0.07f, 0.75f, 0.91f}},
-    {{0.5f, 0.5f}, {0.76f, 0.44f, 0.92f}},
-    {{-0.5f, 0.5f}, {0.96f, 0.3f, 0.34f}}
+
+// test vertices and indices 
+static std::vector<Vertex> s_quad_vertices = {
+	{{-0.5f, -0.5f}, {1.f, 0.f, 0.f}},
+    {{0.5f, -0.5f}, {0.f, 1.f, 0.f}},
+    {{0.5f, 0.5f}, {0.f, 0.f, 1.f}},
+	{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}}
+};
+
+static std::vector<uint16_t> s_quad_indices = {
+	0, 1, 2,
+	2, 3, 0
 };
 
 VRenderer::VRenderer(): m_Window(nullptr)
@@ -53,6 +61,7 @@ bool VRenderer::Terminate()
 	vkDestroySwapchainKHR(m_Device.GetLogicalDevice(), m_SwapChain.GetSwapChain(), nullptr);
 
 	m_VertexBuffer.DestroyBuffer(m_Device.GetLogicalDevice());
+	m_IndexBuffer.DestroyBuffer(m_Device.GetLogicalDevice());
 
 	vkDestroyDevice(m_Device.GetLogicalDevice(), nullptr);
 	vkDestroySurfaceKHR(m_VInstance, m_WindowSurface, nullptr);
@@ -140,7 +149,8 @@ void VRenderer::InitVulkan()
 	CreateFrameBuffers();
 	CreateCommandPool();
 
-	m_VertexBuffer.CreateVertexBuffer(s_tri_vertices, m_Device, m_GraphicsQueue, m_CommandPool);
+	m_VertexBuffer.CreateVertexBuffer(s_quad_vertices, m_Device, m_GraphicsQueue, m_CommandPool);
+	m_IndexBuffer.CreateIndexBuffer(s_quad_indices, m_Device, m_GraphicsQueue, m_CommandPool);
 	
 	CreateCommandBuffers();
 	CreateSyncObjects();
@@ -661,6 +671,9 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	const VkDeviceSize t_Offsets[] = {0};
 	vkCmdBindVertexBuffers(m_CommandBuffers[m_CurrentFrame], 0, 1, t_VertexBuffers, t_Offsets);
 
+	// Bind Index Buffer
+	vkCmdBindIndexBuffer(m_CommandBuffers[m_CurrentFrame], m_IndexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+
 	const VkExtent2D t_SwapChainExtent = m_SwapChain.GetExtent();
 
 	// TODO store this somewhere for reuse
@@ -683,7 +696,8 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 
 	vkCmdSetScissor(m_CommandBuffers[m_CurrentFrame], 0, 1, &t_Scissor);
 
-	vkCmdDraw(m_CommandBuffers[m_CurrentFrame], static_cast<uint32_t>(s_tri_vertices.size()), 1, 0, 0);
+	// Draw
+	vkCmdDrawIndexed(m_CommandBuffers[m_CurrentFrame], static_cast<uint32_t>(s_quad_indices.size()), 1, 0, 0, 0);
 
 
 	// end render pass

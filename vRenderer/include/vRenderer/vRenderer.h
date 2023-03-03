@@ -7,6 +7,8 @@
 #include "helper_structs/RenderingHelpers.h"
 #include <vRenderer/SwapChain.h>
 
+#include "Buffer/IndexBuffer.h"
+
 struct GLFWwindow;
 struct SupportedQueueFamilies;
 
@@ -104,4 +106,5 @@ private:
 	uint32_t m_CurrentFrame = 0;
 
 	VertexBuffer m_VertexBuffer;
+	IndexBuffer m_IndexBuffer;
 };
