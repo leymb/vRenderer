@@ -140,7 +140,7 @@ void VRenderer::InitVulkan()
 	CreateFrameBuffers();
 	CreateCommandPool();
 
-	m_VertexBuffer.CreateVertexBuffer(s_tri_vertices, m_Device);
+	m_VertexBuffer.CreateVertexBuffer(s_tri_vertices, m_Device, m_GraphicsQueue, m_CommandPool);
 	
 	CreateCommandBuffers();
 	CreateSyncObjects();
