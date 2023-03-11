@@ -8,6 +8,7 @@
 #include <vRenderer/SwapChain.h>
 
 #include "Buffer/IndexBuffer.h"
+#include "Buffer/UniformBuffer.h"
 
 struct GLFWwindow;
 struct SupportedQueueFamilies;
@@ -71,6 +72,9 @@ private:
 	void RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex);
 
 
+	void CreateUniformBuffers();
+	void UpdateUniformBuffers(uint32_t a_CurrentImage);
+
 	void CreateSyncObjects();
 
 	void DestroySyncObjects();
@@ -92,8 +96,11 @@ private:
 	VkQueue m_PresentQueue;
 
 	VkRenderPass m_MainRenderPass;
+	VkDescriptorSetLayout m_DescriptorSetLayout;
 	VkPipelineLayout m_PipelineLayout;
 	VkPipeline m_GraphicsPipeline;
+
+	std::vector<UniformBuffer> m_UniformBuffers{};
 
 	std::vector<VkFramebuffer> m_Framebuffers;
 
