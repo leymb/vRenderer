@@ -71,9 +71,13 @@ private:
 
 	void RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex);
 
-
 	void CreateUniformBuffers();
 	void UpdateUniformBuffers(uint32_t a_CurrentImage);
+
+	VkDescriptorPool CreateDescriptorPool(int a_DescriptorCount, const VkDevice& a_LogicalDevice);
+	void CreateDescriptorSets(int a_Count, VkDevice a_LogicalDevice, VkDescriptorSetLayout& a_DescriptorSetLayout,
+	                          VkDescriptorPool& a_DescriptorPool, std::vector<VkDescriptorSet>& a_DescriptorSets);
+
 
 	void CreateSyncObjects();
 
@@ -101,6 +105,8 @@ private:
 	VkPipeline m_GraphicsPipeline;
 
 	std::vector<UniformBuffer> m_UniformBuffers{};
+	VkDescriptorPool m_DescriptorPool;
+	std::vector<VkDescriptorSet> m_DescriptorSets;
 
 	std::vector<VkFramebuffer> m_Framebuffers;
 

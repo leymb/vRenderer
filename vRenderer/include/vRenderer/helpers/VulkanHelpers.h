@@ -87,7 +87,7 @@ inline VkPipelineRasterizationStateCreateInfo GenRasterizationStateCreateInfo()
 	t_RasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 
 	// set vertex order for faces
-	t_RasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	t_RasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
 	t_RasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
 	t_RasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;

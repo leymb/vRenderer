@@ -32,11 +32,11 @@ VkDescriptorSetLayout UniformBuffer::CreateDescriptorSetLayout(const VkDevice a_
 	t_UniformBufferObjectBinding.pImmutableSamplers = nullptr;
 
 	VkDescriptorSetLayoutCreateInfo t_DescriptorSetLayoutCreateInfo = {};
-	t_DescriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	t_DescriptorSetLayoutCreateInfo.bindingCount = 0;
+	t_DescriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	t_DescriptorSetLayoutCreateInfo.bindingCount = 1;
 	t_DescriptorSetLayoutCreateInfo.pBindings = &t_UniformBufferObjectBinding;
 
-	if (vkCreateDescriptorSetLayout(a_Device, &t_DescriptorSetLayoutCreateInfo, nullptr, &t_DescriptorSetLayout))
+	if (vkCreateDescriptorSetLayout(a_Device, &t_DescriptorSetLayoutCreateInfo, nullptr, &t_DescriptorSetLayout) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Error! Failed to create Uniform Buffer descriptor set layout!");
 	}

@@ -72,6 +72,8 @@ bool VRenderer::Terminate()
 		m_UniformBuffers[i].DestroyBuffer(m_Device.GetLogicalDevice());
 	}
 
+	vkDestroyDescriptorPool(m_Device.GetLogicalDevice(), m_DescriptorPool, nullptr);
+
 	vkDestroyDescriptorSetLayout(m_Device.GetLogicalDevice(), m_DescriptorSetLayout, nullptr);
 
 	m_VertexBuffer.DestroyBuffer(m_Device.GetLogicalDevice());
@@ -170,6 +172,9 @@ void VRenderer::InitVulkan()
 	m_VertexBuffer.CreateVertexBuffer(s_quad_vertices, m_Device, m_GraphicsQueue, m_CommandPool);
 	m_IndexBuffer.CreateIndexBuffer(s_quad_indices, m_Device, m_GraphicsQueue, m_CommandPool);
 	CreateUniformBuffers();
+	m_DescriptorPool = CreateDescriptorPool(m_MaxInFlightFrames, m_Device.GetLogicalDevice());
+	CreateDescriptorSets(m_MaxInFlightFrames, m_Device.GetLogicalDevice(), m_DescriptorSetLayout, m_DescriptorPool,
+	                     m_DescriptorSets);
 	
 	CreateCommandBuffers();
 	CreateSyncObjects();
@@ -715,6 +720,10 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 
 	vkCmdSetScissor(m_CommandBuffers[m_CurrentFrame], 0, 1, &t_Scissor);
 
+	// Bind Descriptor Sets
+	vkCmdBindDescriptorSets(m_CommandBuffers[m_CurrentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1,
+	                        &m_DescriptorSets[m_CurrentFrame], 0, nullptr);
+
 	// Draw
 	vkCmdDrawIndexed(m_CommandBuffers[m_CurrentFrame], static_cast<uint32_t>(s_quad_indices.size()), 1, 0, 0, 0);
 
@@ -750,7 +759,7 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage)
 	const auto t_CurrTime = std::chrono::high_resolution_clock::now();
 	float t_Delta = std::chrono::duration<float, std::chrono::seconds::period>(t_CurrTime - t_Start).count();
 
-	// TODO make camera class that calculates view & projection and contains near & far
+	// TODO make cgamera class that calculates view & projection and contains near & far
 	// TODO move model mat into individual mesh class
 
 	UniformBufferObject t_UBO = {};
@@ -765,6 +774,70 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage)
 	t_UBO.m_Projection[1][1] *= -1;
 
 	m_UniformBuffers[a_CurrentImage].FillBuffer(t_UBO);
+}
+
+VkDescriptorPool VRenderer::CreateDescriptorPool(const int a_DescriptorCount, const VkDevice& a_LogicalDevice)
+{
+	VkDescriptorPoolSize t_PoolSize;
+	t_PoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	t_PoolSize.descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
+
+	VkDescriptorPoolCreateInfo t_DescriptorPoolCreateInfo = {};
+	t_DescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	t_DescriptorPoolCreateInfo.poolSizeCount = 1;
+	t_DescriptorPoolCreateInfo.pPoolSizes = &t_PoolSize;
+	t_DescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(a_DescriptorCount);
+
+	VkDescriptorPool t_DescriptorPool;
+
+	if (vkCreateDescriptorPool(a_LogicalDevice, &t_DescriptorPoolCreateInfo, nullptr, &t_DescriptorPool) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Could not create Descriptor Pool!");
+	}
+
+	return t_DescriptorPool;
+}
+
+void VRenderer::CreateDescriptorSets(int a_Count, VkDevice a_LogicalDevice,
+                                     VkDescriptorSetLayout& a_DescriptorSetLayout,
+                                     VkDescriptorPool& a_DescriptorPool, std::vector<VkDescriptorSet>& a_DescriptorSets)
+{
+	// allocate descriptor sets
+	std::vector<VkDescriptorSetLayout> t_DescriptorSetLayouts(a_Count, a_DescriptorSetLayout);
+
+	VkDescriptorSetAllocateInfo t_AllocateInfo = {};
+	t_AllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	t_AllocateInfo.descriptorPool = a_DescriptorPool;
+	t_AllocateInfo.descriptorSetCount = static_cast<uint32_t>(a_Count);
+	t_AllocateInfo.pSetLayouts = t_DescriptorSetLayouts.data();
+
+	a_DescriptorSets.resize(a_Count);
+	if (vkAllocateDescriptorSets(a_LogicalDevice, &t_AllocateInfo, a_DescriptorSets.data()) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Could not allocate Descriptor Sets!");
+	}
+
+	// populate descriptor sets
+	for (size_t i = 0; i < a_Count; i++)
+	{
+		VkDescriptorBufferInfo t_BufferInfo = {};
+		t_BufferInfo.buffer = m_UniformBuffers[i].GetBuffer();
+		t_BufferInfo.offset = 0;
+		t_BufferInfo.range = sizeof(UniformBufferObject);
+
+		VkWriteDescriptorSet t_DescriptorWrite = {};
+		t_DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		t_DescriptorWrite.dstSet = a_DescriptorSets[i];
+		t_DescriptorWrite.dstBinding = 0;
+		t_DescriptorWrite.dstArrayElement = 0;
+		t_DescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		t_DescriptorWrite.descriptorCount = 1;
+		t_DescriptorWrite.pBufferInfo = &t_BufferInfo;
+		t_DescriptorWrite.pImageInfo = nullptr;
+		t_DescriptorWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(a_LogicalDevice, 1, &t_DescriptorWrite, 0 ,nullptr);
+	}
 }
 
 void VRenderer::CreateSyncObjects()
