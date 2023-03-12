@@ -87,7 +87,7 @@ inline VkPipelineRasterizationStateCreateInfo GenRasterizationStateCreateInfo()
 	t_RasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 
 	// set vertex order for faces
-	t_RasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	t_RasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
 	t_RasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
 	t_RasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
@@ -145,13 +145,13 @@ inline VkPipelineColorBlendStateCreateInfo GenColorBlendStateCreateInfo(const Vk
 	return t_ColorBlendStateCreateInfo;
 }
 
-inline VkPipelineLayoutCreateInfo GenPipelineCreateInfo()
+inline VkPipelineLayoutCreateInfo GenPipelineCreateInfo(const int a_LayoutCount, const VkDescriptorSetLayout* a_Layout)
 {
 	VkPipelineLayoutCreateInfo t_PipelineLayoutCreateInfo = {};
 
 	t_PipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	t_PipelineLayoutCreateInfo.setLayoutCount = 0;
-	t_PipelineLayoutCreateInfo.pSetLayouts = nullptr;
+	t_PipelineLayoutCreateInfo.setLayoutCount = a_LayoutCount;
+	t_PipelineLayoutCreateInfo.pSetLayouts = a_Layout;
 	t_PipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	t_PipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
