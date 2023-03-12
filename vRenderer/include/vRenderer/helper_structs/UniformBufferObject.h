@@ -3,7 +3,8 @@
 
 struct UniformBufferObject
 {
-	glm::mat4 m_Model = {};
-	glm::mat4 m_View = {};
-	glm::mat4 m_Projection = {};
+	// explicit memory alignment for members
+	alignas(16) glm::mat4 m_Model = {};
+	alignas(16) glm::mat4 m_View = {};
+	alignas(16) glm::mat4 m_Projection = {};
 };
