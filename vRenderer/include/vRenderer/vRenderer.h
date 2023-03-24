@@ -7,6 +7,7 @@
 #include "helper_structs/RenderingHelpers.h"
 #include <vRenderer/SwapChain.h>
 
+#include "Texture.h"
 #include "Buffer/IndexBuffer.h"
 #include "Buffer/UniformBuffer.h"
 
@@ -120,4 +121,7 @@ private:
 
 	VertexBuffer m_VertexBuffer;
 	IndexBuffer m_IndexBuffer;
+
+	// todo make proper texturing system
+	Texture m_Texture;
 };

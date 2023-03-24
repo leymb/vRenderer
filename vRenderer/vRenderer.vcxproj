@@ -188,6 +188,7 @@
     <ClInclude Include="include\vRenderer\Buffer\IndexBuffer.h" />
     <ClInclude Include="include\vRenderer\Buffer\UniformBuffer.h" />
     <ClInclude Include="include\vRenderer\helper_structs\UniformBufferObject.h" />
+    <ClInclude Include="include\vRenderer\Image.h" />
     <ClInclude Include="include\vRenderer\SwapChain.h" />
     <ClInclude Include="include\vRenderer\Buffer\VertexBuffer.h" />
     <ClInclude Include="include\vRenderer\Device.h" />
@@ -195,6 +196,7 @@
     <ClInclude Include="include\vRenderer\helpers\VulkanHelpers.h" />
     <ClInclude Include="include\vRenderer\helper_structs\RenderingHelpers.h" />
     <ClInclude Include="include\vRenderer\helper_structs\Vertex.h" />
+    <ClInclude Include="include\vRenderer\Texture.h" />
     <ClInclude Include="include\vRenderer\vRenderer.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
@@ -208,9 +210,11 @@
     <ClCompile Include="src\vRenderer\Buffer\Buffer.cpp" />
     <ClCompile Include="src\vRenderer\Buffer\IndexBuffer.cpp" />
     <ClCompile Include="src\vRenderer\Buffer\UniformBuffer.cpp" />
+    <ClCompile Include="src\vRenderer\Image.cpp" />
     <ClCompile Include="src\vRenderer\SwapChain.cpp" />
     <ClCompile Include="src\vRenderer\Buffer\VertexBuffer.cpp" />
     <ClCompile Include="src\vRenderer\Device.cpp" />
+    <ClCompile Include="src\vRenderer\Texture.cpp" />
     <ClCompile Include="src\vRenderer\vRenderer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

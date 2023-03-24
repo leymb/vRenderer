@@ -43,10 +43,17 @@ public:
 	void FillBuffer(VkDeviceSize a_BufferSize, const VkDevice& a_LogicalDevice,
 	                void* a_Data);
 
+	/// <summary>	Gets available types of memory and returns the suitable memory types based on the type filter. </summary>
+	/// <param name="a_Device">	   	The device.</param>
+	/// <param name="a_TypeFilter">	A filter specifying the type.</param>
+	/// <param name="a_Properties">	The properties.</param>
+	/// <returns>	The supported memory type bits. </returns>
+
+	static uint32_t GetMemoryType(const Device& a_Device, uint32_t a_TypeFilter, VkMemoryPropertyFlags a_Properties);
+
 protected:
 
 	VkMemoryRequirements GetMemoryRequirements(const VkDevice& a_LogicalDevice) const;
-	static uint32_t GetMemoryType(const Device& a_Device, uint32_t a_TypeFilter, VkMemoryPropertyFlags a_Properties);
 	void AllocateMemory(const Device& a_Device, VkMemoryPropertyFlags a_Properties);
 
 	VkBuffer m_Buffer;
