@@ -238,3 +238,54 @@ inline SupportedQueueFamilies CheckSupportedQueueFamilies(const VkPhysicalDevice
 
 	return  t_QueueFamilies;
 }
+
+/// <summary>	Begins single time command. </summary>
+/// <param name="a_CommandPool">  	[in,out] The command pool.</param>
+/// <param name="a_LogicalDevice">	The logical device.</param>
+/// <returns>	A VkCommandBuffer. </returns>
+
+inline VkCommandBuffer BeginSingleTimeCommand(VkCommandPool& a_CommandPool, const VkDevice& a_LogicalDevice)
+{
+	// create temporary command buffer
+	VkCommandBufferAllocateInfo t_BufferAllocateInfo = {};
+	t_BufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	t_BufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	t_BufferAllocateInfo.commandPool = a_CommandPool;
+	t_BufferAllocateInfo.commandBufferCount = 1;
+
+	VkCommandBuffer t_CommandBuffer;
+	vkAllocateCommandBuffers(a_LogicalDevice, &t_BufferAllocateInfo, &t_CommandBuffer);
+
+	// begin recording command buffer
+	VkCommandBufferBeginInfo t_BufferBeginInfo = {};
+	t_BufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	t_BufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(t_CommandBuffer, &t_BufferBeginInfo);
+
+	return  t_CommandBuffer;
+}
+
+/// <summary>	Ends single time commands. </summary>
+/// <param name="a_CommandBuffer">	Buffer for command data.</param>
+/// <param name="a_GraphicsQueue">	Queue of graphics.</param>
+/// <param name="a_LogicalDevice">	The logical device.</param>
+/// <param name="a_CommandPool">  	The command pool.</param>
+
+inline void EndSingleTimeCommands(VkCommandBuffer a_CommandBuffer, const VkQueue& a_GraphicsQueue,
+                                  const VkDevice& a_LogicalDevice, const VkCommandPool& a_CommandPool)
+{
+	// end recording command buffer
+	vkEndCommandBuffer(a_CommandBuffer);
+
+	VkSubmitInfo t_SubmitInfo = {};
+	t_SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	t_SubmitInfo.commandBufferCount = 1;
+	t_SubmitInfo.pCommandBuffers = &a_CommandBuffer;
+
+	vkQueueSubmit(a_GraphicsQueue, 1, &t_SubmitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(a_GraphicsQueue);
+
+	// cleanup 
+	vkFreeCommandBuffers(a_LogicalDevice,a_CommandPool, 1, &a_CommandBuffer);
+}

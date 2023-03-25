@@ -9,7 +9,9 @@ public:
 	Texture();
 	~Texture();
 
-	void CreateTextureFromImage(const char* a_FilePath, const Device& a_Device);
+	void DestroyTexture(VkDevice a_LogicalDevice);
+
+	void CreateTextureFromImage(const char* a_FilePath, const Device& a_Device, VkCommandPool& a_CommandPool, const VkQueue& a_GraphicsQueue);
 
 private:
 

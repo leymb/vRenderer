@@ -12,7 +12,12 @@ Texture::Texture()
 Texture::~Texture()
 = default;
 
-void Texture::CreateTextureFromImage(const char* a_FilePath, const Device& a_Device)
+void Texture::DestroyTexture(VkDevice a_LogicalDevice)
+{
+	m_Texture.DestroyImage(a_LogicalDevice);
+}
+
+void Texture::CreateTextureFromImage(const char* a_FilePath, const Device& a_Device,VkCommandPool& a_CommandPool, const VkQueue& a_GraphicsQueue)
 {
 	// load image
 	int t_TextureWidth = 0;
@@ -43,4 +48,21 @@ void Texture::CreateTextureFromImage(const char* a_FilePath, const Device& a_Dev
 	// create Image
 	m_Texture.CreateImage(a_Device, t_TextureWidth, t_TextureHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
 	                      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	// transition image layout safely using image memory barrier
+	m_Texture.TransitionImageLayout(VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED,
+	                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, a_CommandPool, a_GraphicsQueue,
+	                                a_Device.GetLogicalDevice());
+
+	t_StagingBuffer.CopyBufferToImage(m_Texture.GetImage(), static_cast<uint32_t>(t_TextureWidth),
+	                                  static_cast<uint32_t>(t_TextureHeight), a_CommandPool,
+	                                  a_Device.GetLogicalDevice(), a_GraphicsQueue);
+
+	// prepare for sampling in the shader
+	m_Texture.TransitionImageLayout(VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, a_CommandPool, a_GraphicsQueue,
+	                                a_Device.GetLogicalDevice());
+
+	// cleanup 
+	t_StagingBuffer.DestroyBuffer(a_Device.GetLogicalDevice());
 }

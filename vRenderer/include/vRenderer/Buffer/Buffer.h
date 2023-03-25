@@ -1,12 +1,15 @@
 #pragma once
-#include "vulkan/vulkan_core.h"
 #include <stdexcept>
+#include "vulkan/vulkan_core.h"
+
+#include "vRenderer/Image.h"
 
 class Device;
 class Buffer
 {
 public:
 	Buffer();
+	~Buffer();
 
 	/// <summary>	Creates a buffer and allocates memory for it. </summary>
 	/// <param name="a_Size">		  	The size of the memory.</param>
@@ -34,6 +37,19 @@ public:
 
 	void CopyInto(VkBuffer a_DstBuffer, VkDevice a_LogicalDevice, VkDeviceSize a_DeviceSize, VkQueue a_GraphicsQueue,
 	              VkCommandPool a_CommandPool);
+
+	/// <summary>	Copies the buffer to a provided VkImage. </summary>
+	/// <param name="a_Image">		  	[in,out] The image.</param>
+	/// <param name="a_Width">		  	The width.</param>
+	/// <param name="a_Height">		  	The height.</param>
+	/// <param name="a_CommandPool">  	[in,out] The command pool.</param>
+	/// <param name="a_LogicalDevice">	The logical device.</param>
+	/// <param name="a_GraphicsQueue">	Graphics Queue.</param>
+	///
+	/// ### <param name="a_CommandBuffer">	[in,out] Buffer for command data.</param>
+
+	void CopyBufferToImage(const VkImage& a_Image, uint32_t a_Width, uint32_t a_Height, VkCommandPool& a_CommandPool,
+	                       const VkDevice& a_LogicalDevice, const VkQueue& a_GraphicsQueue) const;
 
 	/// <summary>	Fills the buffer with the provided data. </summary>
 	/// <param name="a_BufferSize">   	Size of the buffer.</param>

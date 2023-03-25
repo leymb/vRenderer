@@ -67,6 +67,8 @@ bool VRenderer::Terminate()
 	m_SwapChain.DestroyImageViews(m_Device.GetLogicalDevice());
 	vkDestroySwapchainKHR(m_Device.GetLogicalDevice(), m_SwapChain.GetSwapChain(), nullptr);
 
+	m_Texture.DestroyTexture(m_Device.GetLogicalDevice());
+
 	for(size_t i = 0; i < m_UniformBuffers.size(); i++)
 	{
 		m_UniformBuffers[i].DestroyBuffer(m_Device.GetLogicalDevice());
@@ -169,7 +171,7 @@ void VRenderer::InitVulkan()
 	CreateFrameBuffers();
 	CreateCommandPool();
 
-	m_Texture.CreateTextureFromImage("../vRenderer/assets/textures/Logo.jpg", m_Device);
+	m_Texture.CreateTextureFromImage("../vRenderer/assets/textures/Logo.jpg", m_Device, m_CommandPool, m_GraphicsQueue);
 
 	m_VertexBuffer.CreateVertexBuffer(s_quad_vertices, m_Device, m_GraphicsQueue, m_CommandPool);
 	m_IndexBuffer.CreateIndexBuffer(s_quad_indices, m_Device, m_GraphicsQueue, m_CommandPool);
