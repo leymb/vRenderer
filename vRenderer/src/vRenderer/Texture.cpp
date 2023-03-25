@@ -15,6 +15,7 @@ Texture::~Texture()
 void Texture::DestroyTexture(VkDevice a_LogicalDevice)
 {
 	m_Texture.DestroyImage(a_LogicalDevice);
+	vkDestroySampler(a_LogicalDevice, m_TextureSampler, nullptr);
 }
 
 void Texture::CreateTextureFromImage(const char* a_FilePath, const Device& a_Device,VkCommandPool& a_CommandPool, const VkQueue& a_GraphicsQueue)
@@ -65,4 +66,40 @@ void Texture::CreateTextureFromImage(const char* a_FilePath, const Device& a_Dev
 
 	// cleanup 
 	t_StagingBuffer.DestroyBuffer(a_Device.GetLogicalDevice());
+}
+
+void Texture::CreateTextureSampler(const Device& a_Device)
+{
+	VkSamplerCreateInfo t_SamplerCreateInfo = {};
+	t_SamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	t_SamplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+	t_SamplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+
+	// not that relevant because I do not sample outside of the image
+	t_SamplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	t_SamplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	t_SamplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+	// anisotropy
+	VkPhysicalDeviceProperties t_DeviceProperties = {};
+	vkGetPhysicalDeviceProperties(a_Device.GetPhysicalDevice(), &t_DeviceProperties);
+
+	t_SamplerCreateInfo.anisotropyEnable = VK_TRUE;
+	t_SamplerCreateInfo.maxAnisotropy = t_DeviceProperties.limits.maxSamplerAnisotropy;
+
+	t_SamplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	t_SamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+	t_SamplerCreateInfo.compareEnable = VK_FALSE;
+	t_SamplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+	// mipmapping
+	t_SamplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	t_SamplerCreateInfo.mipLodBias = 0.0f;
+	t_SamplerCreateInfo.minLod = 0.0f;
+	t_SamplerCreateInfo.maxLod = 0.0f;
+
+	if (vkCreateSampler(a_Device.GetLogicalDevice(), &t_SamplerCreateInfo,nullptr, &m_TextureSampler) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Failed to create Texture Sampler!");
+	}
 }

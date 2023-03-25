@@ -86,9 +86,14 @@ bool Device::CheckDeviceSuitability(const VkPhysicalDevice a_Device, const VkSur
 	// check whether the operations required by this application are supported by the devices queue families
 	const SupportedQueueFamilies t_SupportedQueueFamilies = CheckSupportedQueueFamilies(a_Device, a_Surface);
 
+	// check device features
+	VkPhysicalDeviceFeatures t_PhysicalDeviceFeatures = {};
+	vkGetPhysicalDeviceFeatures(a_Device, &t_PhysicalDeviceFeatures);
+
 	return	t_SupportedQueueFamilies.IsComplete() && 
 			CheckDeviceExtensionSupport(a_Device, a_RequestedDeviceExtensions) && 
-			CheckSwapChainCompatibility(a_Device, a_Surface);
+			CheckSwapChainCompatibility(a_Device, a_Surface) &&
+			t_PhysicalDeviceFeatures.samplerAnisotropy;
 }
 
 bool Device::CheckSwapChainCompatibility(const VkPhysicalDevice& a_Device, const VkSurfaceKHR& a_WindowSurface)
@@ -176,6 +181,7 @@ void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsQueu
 
 	// TODO specify the actual features later when they become relevant
 	VkPhysicalDeviceFeatures t_PhysicalDeviceFeatures = {};
+	t_PhysicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
 
 	// create the logical device
 	VkDeviceCreateInfo t_LogicalDeviceCreateInfo = {};

@@ -26,10 +26,22 @@ public:
 
 	void DestroyImage(VkDevice a_LogicalDevice);
 
+	/// <summary>	Creates an image view for the VkImage contained within this object. </summary>
+	/// <param name="a_Format">		  	Describes the format to use.</param>
+	/// <param name="a_LogicalDevice">	The logical device.</param>
+	/// <returns>	The new image view. </returns>
+
+	VkImageView CreateImageView(VkFormat a_Format, VkDevice a_LogicalDevice) const;
+
 	/// <summary>	Gets the raw VkImage. </summary>
 	/// <returns>	The VkImage. </returns>
 
-	const VkImage& GetImage();
+	const VkImage& GetImage() const;
+
+	/// <summary>	Gets image view to the VkImage contained within this object. </summary>
+	/// <returns>	The image view. </returns>
+
+	const VkImageView GetImageView();
 
 	void TransitionImageLayout(VkFormat a_Format, VkImageLayout a_OldLayout, VkImageLayout a_NewLayout,
 	                           VkCommandPool& a_CommandPool, const VkQueue& a_GraphicsQueue, const VkDevice& a_LogicalDevice);
@@ -43,5 +55,7 @@ private:
 
 	VkImage m_Image;
 	VkDeviceMemory m_ImageMemory;
+
+	VkImageView m_ImageView;
 };
 

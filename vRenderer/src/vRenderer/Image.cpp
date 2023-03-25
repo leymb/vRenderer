@@ -47,21 +47,53 @@ void Image::CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Hei
 	AllocateImageMemory(a_Device, a_PropertyFlags);
 
 	vkBindImageMemory(a_Device.GetLogicalDevice(), m_Image, m_ImageMemory, 0);
+
+	m_ImageView = CreateImageView(a_Format, a_Device.GetLogicalDevice());
 }
 
 void Image::DestroyImage(const VkDevice a_LogicalDevice)
 {
+	vkDestroyImageView(a_LogicalDevice, m_ImageView, nullptr);
 	vkDestroyImage(a_LogicalDevice, m_Image, nullptr);
 	vkFreeMemory(a_LogicalDevice, m_ImageMemory, nullptr);
 }
 
-const VkImage& Image::GetImage()
+VkImageView Image::CreateImageView(const VkFormat a_Format, const VkDevice a_LogicalDevice) const
+{
+	VkImageViewCreateInfo t_ViewCreateInfo = {};
+	t_ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	t_ViewCreateInfo.image = m_Image;
+	t_ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	t_ViewCreateInfo.format = a_Format;
+
+	t_ViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	t_ViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	t_ViewCreateInfo.subresourceRange.levelCount = 1;
+	t_ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	t_ViewCreateInfo.subresourceRange.layerCount = 1;
+
+	VkImageView t_ImageView;
+
+	if (vkCreateImageView(a_LogicalDevice, &t_ViewCreateInfo, nullptr, &t_ImageView) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Failed to create Image View!");
+	}
+
+	return t_ImageView;
+}
+
+const VkImage& Image::GetImage() const
 {
 	return m_Image;
 }
 
+const VkImageView Image::GetImageView()
+{
+	return m_ImageView;
+}
+
 void Image::TransitionImageLayout(VkFormat a_Format, VkImageLayout a_OldLayout, VkImageLayout a_NewLayout,
-	                           VkCommandPool& a_CommandPool, const VkQueue& a_GraphicsQueue, const VkDevice& a_LogicalDevice)
+                                  VkCommandPool& a_CommandPool, const VkQueue& a_GraphicsQueue, const VkDevice& a_LogicalDevice)
 {
 	VkCommandBuffer t_CmdBuffer = BeginSingleTimeCommand(a_CommandPool, a_LogicalDevice);
 

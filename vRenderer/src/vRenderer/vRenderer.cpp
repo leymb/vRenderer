@@ -172,6 +172,7 @@ void VRenderer::InitVulkan()
 	CreateCommandPool();
 
 	m_Texture.CreateTextureFromImage("../vRenderer/assets/textures/Logo.jpg", m_Device, m_CommandPool, m_GraphicsQueue);
+	m_Texture.CreateTextureSampler(m_Device);
 
 	m_VertexBuffer.CreateVertexBuffer(s_quad_vertices, m_Device, m_GraphicsQueue, m_CommandPool);
 	m_IndexBuffer.CreateIndexBuffer(s_quad_indices, m_Device, m_GraphicsQueue, m_CommandPool);
