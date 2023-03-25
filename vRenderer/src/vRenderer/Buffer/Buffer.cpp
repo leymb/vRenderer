@@ -1,10 +1,14 @@
 #include "pch.h"
 #include "vRenderer/Buffer/Buffer.h"
 #include "vRenderer/Device.h"
+#include "vRenderer/helpers/VulkanHelpers.h"
 
 Buffer::Buffer()
 {
 }
+
+Buffer::~Buffer()
+= default;
 
 void Buffer::CreateBuffer(VkDeviceSize a_Size, VkBufferUsageFlags a_UsageFlag, VkMemoryPropertyFlags a_PropertyFlags, const Device& a_Device)
 {
@@ -48,23 +52,7 @@ const VkBuffer& Buffer::GetBuffer() const
 void Buffer::CopyInto(VkBuffer a_DstBuffer, VkDevice a_LogicalDevice, VkDeviceSize a_DeviceSize, VkQueue a_GraphicsQueue,
 	              VkCommandPool a_CommandPool)
 {
-	// create temporary command buffer
-	VkCommandBufferAllocateInfo t_CmdBufferAllocateInfo = {};
-
-	t_CmdBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	t_CmdBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	t_CmdBufferAllocateInfo.commandPool = a_CommandPool;
-	t_CmdBufferAllocateInfo.commandBufferCount = 1;
-
-	VkCommandBuffer t_CmdBuffer;
-	vkAllocateCommandBuffers(a_LogicalDevice, &t_CmdBufferAllocateInfo, &t_CmdBuffer);
-
-	// begin recording command buffer
-	VkCommandBufferBeginInfo t_CmdBeginInfo = {};
-	t_CmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	t_CmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(t_CmdBuffer, &t_CmdBeginInfo);
+	VkCommandBuffer t_CmdBuffer = BeginSingleTimeCommand(a_CommandPool, a_LogicalDevice);
 
 	// copy data
 	VkBufferCopy t_CopyRegion = {};
@@ -74,20 +62,39 @@ void Buffer::CopyInto(VkBuffer a_DstBuffer, VkDevice a_LogicalDevice, VkDeviceSi
 
 	vkCmdCopyBuffer(t_CmdBuffer, m_Buffer, a_DstBuffer, 1, &t_CopyRegion);
 
-	// end recording command buffer
-	vkEndCommandBuffer(t_CmdBuffer);
-
 	// submit command buffer to complete copying
-	VkSubmitInfo t_CmdSubmitInfo = {};
-	t_CmdSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	t_CmdSubmitInfo.commandBufferCount = 1;
-	t_CmdSubmitInfo.pCommandBuffers = &t_CmdBuffer;
+	EndSingleTimeCommands(t_CmdBuffer, a_GraphicsQueue, a_LogicalDevice, a_CommandPool);
+}
 
-	vkQueueSubmit(a_GraphicsQueue, 1, &t_CmdSubmitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(a_GraphicsQueue);
+void Buffer::CopyBufferToImage(const VkImage& a_Image, const uint32_t a_Width, const uint32_t a_Height,
+                               VkCommandPool& a_CommandPool, const VkDevice& a_LogicalDevice,
+                               const VkQueue& a_GraphicsQueue) const
+{
+	VkCommandBuffer t_CommandBuffer = BeginSingleTimeCommand(a_CommandPool,a_LogicalDevice);
 
-	// cleanup 
-	vkFreeCommandBuffers(a_LogicalDevice, a_CommandPool, 1, &t_CmdBuffer);
+	VkBufferImageCopy t_CopyRegion;
+	t_CopyRegion.bufferOffset = 0;
+	t_CopyRegion.bufferRowLength = 0;
+	t_CopyRegion.bufferImageHeight = 0;
+
+	t_CopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	t_CopyRegion.imageSubresource.mipLevel = 0;
+	t_CopyRegion.imageSubresource.baseArrayLayer = 0;
+	t_CopyRegion.imageSubresource.layerCount = 1;
+
+	t_CopyRegion.imageOffset = {0,0,0};
+	t_CopyRegion.imageExtent = {a_Width, a_Height, 1};
+
+	vkCmdCopyBufferToImage(
+		t_CommandBuffer,
+		m_Buffer,
+		a_Image,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1,
+		&t_CopyRegion
+	);
+
+	EndSingleTimeCommands(t_CommandBuffer, a_GraphicsQueue, a_LogicalDevice, a_CommandPool);
 }
 
 VkMemoryRequirements Buffer::GetMemoryRequirements(const VkDevice& a_LogicalDevice) const

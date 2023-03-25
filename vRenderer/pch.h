@@ -18,5 +18,7 @@
 #include "vRenderer/Buffer/IndexBuffer.h"
 #include "vRenderer/Buffer/UniformBuffer.h"
 #include "vRenderer/SwapChain.h"
+#include "vRenderer/Texture.h"
+#include "vRenderer/Image.h"
 
 #endif //PCH_H

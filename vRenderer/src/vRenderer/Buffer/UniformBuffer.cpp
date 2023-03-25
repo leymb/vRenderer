@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "vRenderer/Buffer/UniformBuffer.h"
+
+#include <array>
+
 #include "vRenderer/helper_structs/UniformBufferObject.h"
 #include "vRenderer/Device.h"
 
@@ -24,6 +27,7 @@ VkDescriptorSetLayout UniformBuffer::CreateDescriptorSetLayout(const VkDevice a_
 {
 	VkDescriptorSetLayout t_DescriptorSetLayout;
 
+	// UBO Binding
 	VkDescriptorSetLayoutBinding t_UniformBufferObjectBinding;
 	t_UniformBufferObjectBinding.binding  = 0;
 	t_UniformBufferObjectBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -31,10 +35,21 @@ VkDescriptorSetLayout UniformBuffer::CreateDescriptorSetLayout(const VkDevice a_
 	t_UniformBufferObjectBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	t_UniformBufferObjectBinding.pImmutableSamplers = nullptr;
 
+	// Sampler Binding
+	VkDescriptorSetLayoutBinding t_SamplerLayoutBinding;
+	t_SamplerLayoutBinding.binding = 1;
+	t_SamplerLayoutBinding.descriptorCount = 1;
+	t_SamplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	t_SamplerLayoutBinding.pImmutableSamplers = nullptr;
+	t_SamplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 2> t_Bindings = {t_UniformBufferObjectBinding, t_SamplerLayoutBinding};
+
+	// create info
 	VkDescriptorSetLayoutCreateInfo t_DescriptorSetLayoutCreateInfo = {};
 	t_DescriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	t_DescriptorSetLayoutCreateInfo.bindingCount = 1;
-	t_DescriptorSetLayoutCreateInfo.pBindings = &t_UniformBufferObjectBinding;
+	t_DescriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(t_Bindings.size());
+	t_DescriptorSetLayoutCreateInfo.pBindings = t_Bindings.data();
 
 	if (vkCreateDescriptorSetLayout(a_Device, &t_DescriptorSetLayoutCreateInfo, nullptr, &t_DescriptorSetLayout) != VK_SUCCESS)
 	{

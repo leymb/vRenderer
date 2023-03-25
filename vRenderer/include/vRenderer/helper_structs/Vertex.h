@@ -5,6 +5,7 @@ struct Vertex
 {
 	glm::vec2 m_Position;
 	glm::vec3 m_Color;
+	glm::vec2 m_TexCoord;
 
 	static VkVertexInputBindingDescription GenInputBindingDesc()
 	{
@@ -17,9 +18,9 @@ struct Vertex
 		return t_Desc;
 	}
 
-	static std::array<VkVertexInputAttributeDescription, 2> GenInputAttributeDesc()
+	static std::array<VkVertexInputAttributeDescription, 3> GenInputAttributeDesc()
 	{
-		std::array<VkVertexInputAttributeDescription, 2> t_Desc = {};
+		std::array<VkVertexInputAttributeDescription, 3> t_Desc = {};
 
 		// desc for m_Position
 		t_Desc[0].binding = 0;
@@ -32,6 +33,12 @@ struct Vertex
 		t_Desc[1].location = 1;
 		t_Desc[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 		t_Desc[1].offset = offsetof(Vertex, m_Color);
+
+		// texture coordinates
+		t_Desc[2].binding = 0;
+		t_Desc[2].location = 2;
+		t_Desc[2].format = VK_FORMAT_R32G32_SFLOAT;
+		t_Desc[2].offset = offsetof(Vertex, m_TexCoord);
 
 		return t_Desc;
 	}
