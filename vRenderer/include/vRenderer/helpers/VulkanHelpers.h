@@ -17,7 +17,7 @@ inline VkPipelineDynamicStateCreateInfo GenDynamicStateCreateInfo(const std::vec
 }
 
 inline VkPipelineVertexInputStateCreateInfo GenVertexInputStateCreateInfo(
-	VkVertexInputBindingDescription& a_BindingDesc, std::array<VkVertexInputAttributeDescription, 2>& a_AttributeDesc)
+	VkVertexInputBindingDescription& a_BindingDesc, std::array<VkVertexInputAttributeDescription, 3>& a_AttributeDesc)
 {
 	VkPipelineVertexInputStateCreateInfo t_VertexInputStateCreateInfo = {};
 	t_VertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

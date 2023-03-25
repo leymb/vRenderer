@@ -27,10 +27,13 @@ public:
 
 	void CreateTextureSampler(const Device& a_Device);
 
+	const VkImageView& GetImageView();
+
+	const VkSampler& GetSampler();
+
 private:
 
 	Image m_Texture;
-	VkImageView m_TextureImageView;
 
 	VkSampler m_TextureSampler;
 };

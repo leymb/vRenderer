@@ -103,3 +103,13 @@ void Texture::CreateTextureSampler(const Device& a_Device)
 		throw std::runtime_error("Error! Failed to create Texture Sampler!");
 	}
 }
+
+const VkImageView& Texture::GetImageView()
+{
+	return m_Texture.GetImageView();
+}
+
+const VkSampler& Texture::GetSampler()
+{
+	return m_TextureSampler;
+}

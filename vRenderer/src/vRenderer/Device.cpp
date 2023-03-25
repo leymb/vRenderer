@@ -198,7 +198,7 @@ void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsQueu
 	t_LogicalDeviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(a_EnabledValidationLayers.size());
 	t_LogicalDeviceCreateInfo.ppEnabledLayerNames = a_EnabledValidationLayers.data();
 #else
-	t_logicalDeviceCreateInfo.enabledLayerCount = 0;
+	t_LogicalDeviceCreateInfo.enabledLayerCount = 0;
 #endif
 
 	if(vkCreateDevice(m_PhysicalDevice, &t_LogicalDeviceCreateInfo, nullptr, &m_LogicalDevice) != VK_SUCCESS)

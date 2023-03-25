@@ -22,10 +22,10 @@
 
 // test vertices and indices 
 static std::vector<Vertex> s_quad_vertices = {
-	{{-0.5f, -0.5f}, {1.f, 0.f, 0.f}},
-    {{0.5f, -0.5f}, {0.f, 1.f, 0.f}},
-    {{0.5f, 0.5f}, {0.f, 0.f, 1.f}},
-	{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}}
+	{{-0.5f, -0.5f}, {1.f, 0.f, 0.f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.f, 1.f, 0.f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.0f, 1.0f}}
 };
 
 static std::vector<uint16_t> s_quad_indices = {
@@ -425,7 +425,7 @@ void VRenderer::CreateGraphicsPipeline()
 
 	// create VertexInputStateCreateInfo
 	VkVertexInputBindingDescription t_BindingDesc = Vertex::GenInputBindingDesc();
-	std::array<VkVertexInputAttributeDescription, 2> t_AttributeDesc = Vertex::GenInputAttributeDesc();
+	std::array<VkVertexInputAttributeDescription, 3> t_AttributeDesc = Vertex::GenInputAttributeDesc();
 	VkPipelineVertexInputStateCreateInfo t_VertexInputStateCreateInfo = GenVertexInputStateCreateInfo(t_BindingDesc, t_AttributeDesc);
 
 	// generate Input Assembly stage
@@ -783,14 +783,20 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage)
 
 VkDescriptorPool VRenderer::CreateDescriptorPool(const int a_DescriptorCount, const VkDevice& a_LogicalDevice)
 {
-	VkDescriptorPoolSize t_PoolSize;
-	t_PoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	t_PoolSize.descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
+	std::array<VkDescriptorPoolSize, 2> t_DescriptorPoolSizes = {};
+	// pool size for Uniform Buffer
+	t_DescriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	t_DescriptorPoolSizes[0].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
+
+	// pool size for CombinedImageSampler
+	t_DescriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	t_DescriptorPoolSizes[1].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
+
 
 	VkDescriptorPoolCreateInfo t_DescriptorPoolCreateInfo = {};
 	t_DescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	t_DescriptorPoolCreateInfo.poolSizeCount = 1;
-	t_DescriptorPoolCreateInfo.pPoolSizes = &t_PoolSize;
+	t_DescriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(t_DescriptorPoolSizes.size());
+	t_DescriptorPoolCreateInfo.pPoolSizes = t_DescriptorPoolSizes.data();
 	t_DescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(a_DescriptorCount);
 
 	VkDescriptorPool t_DescriptorPool;
@@ -825,23 +831,42 @@ void VRenderer::CreateDescriptorSets(int a_Count, VkDevice a_LogicalDevice,
 	// populate descriptor sets
 	for (size_t i = 0; i < a_Count; i++)
 	{
+		// for Uniform Buffer
 		VkDescriptorBufferInfo t_BufferInfo = {};
 		t_BufferInfo.buffer = m_UniformBuffers[i].GetBuffer();
 		t_BufferInfo.offset = 0;
 		t_BufferInfo.range = sizeof(UniformBufferObject);
 
-		VkWriteDescriptorSet t_DescriptorWrite = {};
-		t_DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		t_DescriptorWrite.dstSet = a_DescriptorSets[i];
-		t_DescriptorWrite.dstBinding = 0;
-		t_DescriptorWrite.dstArrayElement = 0;
-		t_DescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		t_DescriptorWrite.descriptorCount = 1;
-		t_DescriptorWrite.pBufferInfo = &t_BufferInfo;
-		t_DescriptorWrite.pImageInfo = nullptr;
-		t_DescriptorWrite.pTexelBufferView = nullptr;
+		// for image sampler
+		VkDescriptorImageInfo t_ImageInfo = {};
+		t_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		t_ImageInfo.imageView = m_Texture.GetImageView();
+		t_ImageInfo.sampler = m_Texture.GetSampler();
 
-		vkUpdateDescriptorSets(a_LogicalDevice, 1, &t_DescriptorWrite, 0 ,nullptr);
+		std::array<VkWriteDescriptorSet, 2> t_DescriptorWrites = {};
+
+		// for Uniform Buffer
+		t_DescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		t_DescriptorWrites[0].dstSet = a_DescriptorSets[i];
+		t_DescriptorWrites[0].dstBinding = 0;
+		t_DescriptorWrites[0].dstArrayElement = 0;
+		t_DescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		t_DescriptorWrites[0].descriptorCount = 1;
+		t_DescriptorWrites[0].pBufferInfo = &t_BufferInfo;
+		t_DescriptorWrites[0].pImageInfo = nullptr;
+		t_DescriptorWrites[0].pTexelBufferView = nullptr;
+
+		// for image sampler
+		t_DescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		t_DescriptorWrites[1].dstSet = a_DescriptorSets[i];
+		t_DescriptorWrites[1].dstBinding = 1;
+		t_DescriptorWrites[1].dstArrayElement = 0;
+		t_DescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		t_DescriptorWrites[1].descriptorCount = 1;
+		t_DescriptorWrites[1].pImageInfo = &t_ImageInfo;
+
+		vkUpdateDescriptorSets(a_LogicalDevice, static_cast<uint32_t>(t_DescriptorWrites.size()),
+		                       t_DescriptorWrites.data(), 0, nullptr);
 	}
 }
 
