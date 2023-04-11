@@ -14,7 +14,7 @@ Image::~Image()
 = default;
 
 void Image::CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Height, VkFormat a_Format, VkImageTiling a_Tiling,
-                        VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags)
+                        VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags, VkImageAspectFlags a_ImageAspectFlag)
 {
 	VkImageCreateInfo t_ImageCreateInfo = {};
 	t_ImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -48,7 +48,7 @@ void Image::CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Hei
 
 	vkBindImageMemory(a_Device.GetLogicalDevice(), m_Image, m_ImageMemory, 0);
 
-	m_ImageView = CreateImageView(a_Format, a_Device.GetLogicalDevice());
+	m_ImageView = CreateImageView(a_Format, a_Device.GetLogicalDevice(),a_ImageAspectFlag);
 }
 
 void Image::DestroyImage(const VkDevice a_LogicalDevice)
@@ -58,7 +58,7 @@ void Image::DestroyImage(const VkDevice a_LogicalDevice)
 	vkFreeMemory(a_LogicalDevice, m_ImageMemory, nullptr);
 }
 
-VkImageView Image::CreateImageView(const VkFormat a_Format, const VkDevice a_LogicalDevice) const
+VkImageView Image::CreateImageView(const VkFormat a_Format, const VkDevice a_LogicalDevice, VkImageAspectFlags a_AspectFlag) const
 {
 	VkImageViewCreateInfo t_ViewCreateInfo = {};
 	t_ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -66,7 +66,7 @@ VkImageView Image::CreateImageView(const VkFormat a_Format, const VkDevice a_Log
 	t_ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	t_ViewCreateInfo.format = a_Format;
 
-	t_ViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	t_ViewCreateInfo.subresourceRange.aspectMask = a_AspectFlag;
 	t_ViewCreateInfo.subresourceRange.baseMipLevel = 0;
 	t_ViewCreateInfo.subresourceRange.levelCount = 1;
 	t_ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
