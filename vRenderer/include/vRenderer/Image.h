@@ -19,7 +19,7 @@ public:
 	/// <param name="a_PropertyFlags">	The property flags.</param>
 
 	void CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Height, VkFormat a_Format, VkImageTiling a_Tiling,
-	                 VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags);
+	                 VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags, VkImageAspectFlags a_ImageAspectFlag);
 
 	/// <summary>	Destroys the VkImage and frees its memory. </summary>
 	/// <param name="a_LogicalDevice">	The logical device.</param>
@@ -31,7 +31,7 @@ public:
 	/// <param name="a_LogicalDevice">	The logical device.</param>
 	/// <returns>	The new image view. </returns>
 
-	VkImageView CreateImageView(VkFormat a_Format, VkDevice a_LogicalDevice) const;
+	VkImageView CreateImageView(VkFormat a_Format, VkDevice a_LogicalDevice, VkImageAspectFlags a_AspectFlag) const;
 
 	/// <summary>	Gets the raw VkImage. </summary>
 	/// <returns>	The VkImage. </returns>

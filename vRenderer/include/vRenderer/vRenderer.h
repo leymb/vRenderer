@@ -84,6 +84,9 @@ private:
 
 	void DestroySyncObjects();
 
+	// Depth Buffering
+	void CreateDepthResources();
+
 	// GLFW members
 	GLFWwindow* m_Window;
 	VkSurfaceKHR m_WindowSurface;
@@ -124,4 +127,6 @@ private:
 
 	// todo make proper texturing system
 	Texture m_Texture;
+
+	Image m_DepthImage;
 };

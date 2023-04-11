@@ -3,7 +3,7 @@
 #include <array>
 struct Vertex
 {
-	glm::vec2 m_Position;
+	glm::vec3 m_Position;
 	glm::vec3 m_Color;
 	glm::vec2 m_TexCoord;
 
@@ -25,7 +25,7 @@ struct Vertex
 		// desc for m_Position
 		t_Desc[0].binding = 0;
 		t_Desc[0].location = 0;
-		t_Desc[0].format = VK_FORMAT_R32G32_SFLOAT;
+		t_Desc[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		t_Desc[0].offset = offsetof(Vertex, m_Position);
 
 		// desc for m_Color

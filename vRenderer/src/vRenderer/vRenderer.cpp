@@ -13,6 +13,7 @@
 #include "vRenderer/helper_structs/Vertex.h"
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -22,15 +23,23 @@
 
 // test vertices and indices 
 static std::vector<Vertex> s_quad_vertices = {
-	{{-0.5f, -0.5f}, {1.f, 0.f, 0.f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.f, 1.f, 0.f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f}},
-	{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.0f, 1.0f}}
+	{{-0.5f, -0.5f, 0.0f}, {1.f, 0.f, 0.f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {0.f, 1.f, 0.f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f}},
+	{{-0.5f, 0.5f, 0.0f}, {1.f, 1.f, 1.f}, {1.0f, 1.0f}},
+
+	{{-0.5f, -0.5f, -0.5f}, {1.f, 0.f, 0.f}, {1.0f, 0.0f}},
+	{{0.5f, -0.5f, -0.5f}, {0.f, 1.f, 0.f}, {0.0f, 0.0f}},
+	{{0.5f, 0.5f, -0.5f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f}},
+	{{-0.5f, 0.5f, -0.5f}, {1.f, 1.f, 1.f}, {1.0f, 1.0f}}
 };
 
 static std::vector<uint16_t> s_quad_indices = {
 	0, 1, 2,
-	2, 3, 0
+	2, 3, 0,
+
+	4, 5, 6,
+	6, 7, 4
 };
 
 VRenderer::VRenderer(): m_Window(nullptr)
@@ -68,6 +77,7 @@ bool VRenderer::Terminate()
 	vkDestroySwapchainKHR(m_Device.GetLogicalDevice(), m_SwapChain.GetSwapChain(), nullptr);
 
 	m_Texture.DestroyTexture(m_Device.GetLogicalDevice());
+	m_DepthImage.DestroyImage(m_Device.GetLogicalDevice());
 
 	for(size_t i = 0; i < m_UniformBuffers.size(); i++)
 	{
@@ -168,10 +178,13 @@ void VRenderer::InitVulkan()
 	CreateRenderPass();
 	m_DescriptorSetLayout = UniformBuffer::CreateDescriptorSetLayout(m_Device.GetLogicalDevice());
 	CreateGraphicsPipeline();
+
+	CreateDepthResources();
 	CreateFrameBuffers();
+
 	CreateCommandPool();
 
-	m_Texture.CreateTextureFromImage("../vRenderer/assets/textures/Logo.jpg", m_Device, m_CommandPool, m_GraphicsQueue);
+	m_Texture.CreateTextureFromImage("../vRenderer/assets/textures/me.jpg", m_Device, m_CommandPool, m_GraphicsQueue);
 	m_Texture.CreateTextureSampler(m_Device);
 
 	m_VertexBuffer.CreateVertexBuffer(s_quad_vertices, m_Device, m_GraphicsQueue, m_CommandPool);
@@ -464,6 +477,19 @@ void VRenderer::CreateGraphicsPipeline()
 		throw std::runtime_error("Could not create Pipeline Layout!");
 	}
 
+	// Depth Stencil
+	VkPipelineDepthStencilStateCreateInfo t_DepthStencilCreateInfo = {};
+	t_DepthStencilCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	t_DepthStencilCreateInfo.depthTestEnable = VK_TRUE;
+	t_DepthStencilCreateInfo.depthWriteEnable = VK_TRUE;
+	t_DepthStencilCreateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+	t_DepthStencilCreateInfo.depthBoundsTestEnable = VK_FALSE;
+	t_DepthStencilCreateInfo.minDepthBounds = 0.0f;
+	t_DepthStencilCreateInfo.maxDepthBounds = 1.0f;
+	t_DepthStencilCreateInfo.stencilTestEnable = VK_FALSE;
+	t_DepthStencilCreateInfo.front = {};
+	t_DepthStencilCreateInfo.back = {};
+
 
 	// make Graphics Pipeline
 	VkGraphicsPipelineCreateInfo t_PipelineCreateInfo = {};
@@ -477,7 +503,7 @@ void VRenderer::CreateGraphicsPipeline()
 	t_PipelineCreateInfo.pViewportState = &t_ViewportState;
 	t_PipelineCreateInfo.pRasterizationState = &t_RasterizationStateCreateInfo;
 	t_PipelineCreateInfo.pMultisampleState = &t_MultisampleState;
-	t_PipelineCreateInfo.pDepthStencilState = nullptr;
+	t_PipelineCreateInfo.pDepthStencilState = &t_DepthStencilCreateInfo;
 	t_PipelineCreateInfo.pColorBlendState = &t_ColorBlendStateCreateInfo;
 	t_PipelineCreateInfo.pDynamicState = &t_DynamicStateCreateInfo;
 
@@ -550,10 +576,26 @@ void VRenderer::CreateRenderPass()
 	t_ColorAttachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 
+	// Depth Buffer Attachment
+	VkAttachmentDescription t_DepthAttachment = {};
+	t_DepthAttachment.format = FindDepthFormat(m_Device.GetPhysicalDevice());
+	t_DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	t_DepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	t_DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	t_DepthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	t_DepthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	t_DepthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	t_DepthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+
 	// attachment references
-	VkAttachmentReference t_ColorAttachmentReference = {};
+	VkAttachmentReference t_ColorAttachmentReference;
 	t_ColorAttachmentReference.attachment = 0;
 	t_ColorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference t_DepthAttachmentReference;
+	t_DepthAttachmentReference.attachment = 1;
+	t_DepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 
 	// sub-passes
@@ -564,21 +606,24 @@ void VRenderer::CreateRenderPass()
 
 	t_SubpassDescription.colorAttachmentCount = 1;
 	t_SubpassDescription.pColorAttachments = &t_ColorAttachmentReference;
+	t_SubpassDescription.pDepthStencilAttachment = &t_DepthAttachmentReference;
 
 	// handle sub-pass dependencies
 	VkSubpassDependency t_SubpassDependency = {};
 	t_SubpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	t_SubpassDependency.dstSubpass = 0;
-	t_SubpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	t_SubpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	t_SubpassDependency.srcAccessMask = 0;
-	t_SubpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	t_SubpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	t_SubpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	t_SubpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 	// create render pass
+	std::array<VkAttachmentDescription, 2> t_AttachmentDescriptions = {t_ColorAttachement, t_DepthAttachment};
+
 	VkRenderPassCreateInfo t_RenderPassCreateInfo = {};
 	t_RenderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	t_RenderPassCreateInfo.attachmentCount = 1;
-	t_RenderPassCreateInfo.pAttachments = &t_ColorAttachement;
+	t_RenderPassCreateInfo.attachmentCount = static_cast<uint32_t>(t_AttachmentDescriptions.size());
+	t_RenderPassCreateInfo.pAttachments = t_AttachmentDescriptions.data();
 	t_RenderPassCreateInfo.subpassCount = 1;
 	t_RenderPassCreateInfo.pSubpasses = &t_SubpassDescription;
 	t_RenderPassCreateInfo.dependencyCount = 1;
@@ -601,16 +646,17 @@ void VRenderer::CreateFrameBuffers()
 	// iterate over the SwapChainImageViews vector and create a frame buffer per image
 	for (size_t i = 0; i < t_SwapChainImageViews.size(); i++)
 	{
-		const VkImageView t_Attachments[] = 
+		const std::array<VkImageView, 2> t_Attachments = 
 		{
-			t_SwapChainImageViews[i]
+			t_SwapChainImageViews[i],
+			m_DepthImage.GetImageView()
 		};
 
 		VkFramebufferCreateInfo t_BufferCreateInfo = {};
 		t_BufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		t_BufferCreateInfo.renderPass = m_MainRenderPass;
-		t_BufferCreateInfo.attachmentCount = 1;
-		t_BufferCreateInfo.pAttachments = t_Attachments;
+		t_BufferCreateInfo.attachmentCount = static_cast<uint32_t>(t_Attachments.size());
+		t_BufferCreateInfo.pAttachments = t_Attachments.data();
 		t_BufferCreateInfo.width = t_SwapChainExtent.width;
 		t_BufferCreateInfo.height = t_SwapChainExtent.height;
 		t_BufferCreateInfo.layers = 1;
@@ -686,10 +732,15 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	t_RenderPassBeginInfo.renderArea.offset = {0,0};
 	t_RenderPassBeginInfo.renderArea.extent = m_SwapChain.GetExtent();
 
-	const VkClearValue t_ClearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-	t_RenderPassBeginInfo.clearValueCount = 1;
-	t_RenderPassBeginInfo.pClearValues = &t_ClearColor;
+	// clear values
+	std::array<VkClearValue, 2> t_ClearValues = {};
+	t_ClearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+	t_ClearValues[1].depthStencil = { 1.0f, 0 };
 
+	t_RenderPassBeginInfo.clearValueCount = static_cast<uint32_t>(t_ClearValues.size());
+	t_RenderPassBeginInfo.pClearValues = t_ClearValues.data();
+
+	// begin render pass
 	vkCmdBeginRenderPass(m_CommandBuffers[m_CurrentFrame], &t_RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	// Bind graphics pipeline
@@ -912,4 +963,19 @@ void VRenderer::DestroySyncObjects()
 		vkDestroySemaphore(m_Device.GetLogicalDevice(), m_RenderFinishedSemaphores[i], nullptr);
 		vkDestroyFence(m_Device.GetLogicalDevice(), m_InFlightFences[i], nullptr);
 	}
+}
+
+void VRenderer::CreateDepthResources()
+{
+	VkFormat t_DepthFormat = FindDepthFormat(m_Device.GetPhysicalDevice());
+
+	m_DepthImage.CreateImage(
+		m_Device, 
+		m_SwapChain.GetExtent().width, m_SwapChain.GetExtent().height,
+		t_DepthFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		VK_IMAGE_ASPECT_DEPTH_BIT
+	);
 }

@@ -289,3 +289,53 @@ inline void EndSingleTimeCommands(VkCommandBuffer a_CommandBuffer, const VkQueue
 	// cleanup 
 	vkFreeCommandBuffers(a_LogicalDevice,a_CommandPool, 1, &a_CommandBuffer);
 }
+
+/// <summary>	Searches for the first supported format. </summary>
+/// <exception cref="std::runtime_error">	Raised when no supported format could be found.</exception>
+/// <param name="a_CandidateList"> 	List of candidates.</param>
+/// <param name="a_Tiling">		   	The tiling mode.</param>
+/// <param name="a_FeatureFlags">  	The feature flags.</param>
+/// <param name="a_PhysicalDevice">	The physical device.</param>
+/// <returns>	The found supported format. </returns>
+
+inline VkFormat FindSupportedFormat(const std::vector<VkFormat>& a_CandidateList, VkImageTiling a_Tiling,
+                                VkFormatFeatureFlags a_FeatureFlags, VkPhysicalDevice a_PhysicalDevice)
+{
+	for (VkFormat t_Format : a_CandidateList)
+	{
+		VkFormatProperties t_FormatProperties;
+		vkGetPhysicalDeviceFormatProperties(a_PhysicalDevice, t_Format, &t_FormatProperties);
+
+		// if format is optimal for linear image tiling
+		if (a_Tiling == VK_IMAGE_TILING_LINEAR && (t_FormatProperties.linearTilingFeatures & a_FeatureFlags) ==
+			a_FeatureFlags)
+		{
+			return t_Format;
+		}
+
+		// if format is optimal for optimal image tiling
+		if (a_Tiling == VK_IMAGE_TILING_OPTIMAL && (t_FormatProperties.optimalTilingFeatures & a_FeatureFlags) ==
+			a_FeatureFlags)
+		{
+			return t_Format;
+		}
+	}
+
+	// if no supported format could be found, throw an exception
+	throw std::runtime_error("Error! Could not find supported format!");
+}
+
+inline VkFormat FindDepthFormat(VkPhysicalDevice a_PhysicalDevice)
+{
+	return FindSupportedFormat(
+		{VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		a_PhysicalDevice
+	);
+}
+
+inline bool HasStencilComponent(VkFormat a_Format)
+{
+	return a_Format == VK_FORMAT_D32_SFLOAT_S8_UINT || a_Format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
