@@ -87,6 +87,8 @@ private:
 	// Depth Buffering
 	void CreateDepthResources();
 
+	void RecreateSwapChain();
+
 	// GLFW members
 	GLFWwindow* m_Window;
 	VkSurfaceKHR m_WindowSurface;

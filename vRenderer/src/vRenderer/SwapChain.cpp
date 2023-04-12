@@ -99,6 +99,13 @@ void SwapChain::Create(const Device& a_Device, const VkSurfaceKHR& a_WindowSurfa
 	m_Extent = t_Extent;
 }
 
+void SwapChain::Cleanup(VkDevice a_LogicalDevice, std::vector<VkFramebuffer>& a_FramebufferVector)
+{
+	DestroyFrameBuffers(a_FramebufferVector, a_LogicalDevice);
+	DestroyImageViews(a_LogicalDevice);
+	vkDestroySwapchainKHR(a_LogicalDevice, m_SwapChain, nullptr);
+}
+
 VkSwapchainKHR SwapChain::GetSwapChain()
 {
 	return m_SwapChain;
