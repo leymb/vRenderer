@@ -114,8 +114,7 @@ void VRenderer::Render()
 	{
 		RecreateSwapChain();
 		return;
-	}
-	if (t_Result != VK_SUCCESS && t_Result != VK_SUBOPTIMAL_KHR)
+	} else if (t_Result != VK_SUCCESS && t_Result != VK_SUBOPTIMAL_KHR)
 	{
 		throw std::runtime_error("Error! Failed to acquire swap chain image!");
 	}
@@ -166,12 +165,11 @@ void VRenderer::Render()
 	t_Result = vkQueuePresentKHR(m_PresentQueue, &t_PresentInfo);
 
 	// recreate swap chain?
-	if (t_Result == VK_ERROR_OUT_OF_DATE_KHR || t_Result == VK_SUBOPTIMAL_KHR)
+	if (t_Result == VK_ERROR_OUT_OF_DATE_KHR || t_Result == VK_SUBOPTIMAL_KHR || m_FrameBufferResized)
 	{
+		m_FrameBufferResized = false;
 		RecreateSwapChain();
-		return;
-	}
-	if (t_Result != VK_SUCCESS)
+	} else if (t_Result != VK_SUCCESS)
 	{
 		throw std::runtime_error("Error! Could not present swap chain image!");
 	}
@@ -230,10 +228,18 @@ void VRenderer::InitGlfw(const int a_WindowWidth, const int a_WindowHeight)
 	// tell GLFW not to create an OpenGL context
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	// tell GFLW to not make the window resizable
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	// tell GFLW to make the window resizable
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	m_Window = glfwCreateWindow(a_WindowWidth, a_WindowHeight, "vRenderer", nullptr, nullptr);
+
+	glfwSetWindowUserPointer(m_Window, this);
+
+	glfwSetFramebufferSizeCallback(m_Window, [](GLFWwindow* a_Window, int a_Width, int a_Height)
+			{
+				static_cast<VRenderer*>(glfwGetWindowUserPointer(a_Window))->m_FrameBufferResized = true;
+			}
+		);
 }
 
 /// <summary>	Creates a Vulkan Instance and stores its handle in m_VInstance. </summary>
@@ -1003,6 +1009,16 @@ void VRenderer::CreateDepthResources()
 
 void VRenderer::RecreateSwapChain()
 {
+	// handle minimization
+	int t_WindowWidth = 0;
+	int t_WindowHeight = 0;
+	glfwGetFramebufferSize(m_Window, &t_WindowWidth, &t_WindowHeight);
+	while (t_WindowWidth == 0 || t_WindowHeight == 0)
+	{
+		glfwGetFramebufferSize(m_Window, &t_WindowWidth, &t_WindowHeight);
+		glfwWaitEvents();
+	}
+
 	vkDeviceWaitIdle(m_Device.GetLogicalDevice());
 
 	// cleanup swap chain
@@ -1011,5 +1027,6 @@ void VRenderer::RecreateSwapChain()
 	// recreate swap chain
 	m_SwapChain.Create(m_Device, m_WindowSurface, m_Window);
 	m_SwapChain.CreateImageViews(m_Device.GetLogicalDevice());
+	CreateDepthResources();
 	CreateFrameBuffers();
 }

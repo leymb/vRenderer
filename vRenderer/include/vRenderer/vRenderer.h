@@ -131,4 +131,6 @@ private:
 	Texture m_Texture;
 
 	Image m_DepthImage;
+
+	bool m_FrameBufferResized = false;
 };
