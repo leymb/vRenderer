@@ -1027,6 +1027,7 @@ void VRenderer::RecreateSwapChain()
 	// recreate swap chain
 	m_SwapChain.Create(m_Device, m_WindowSurface, m_Window);
 	m_SwapChain.CreateImageViews(m_Device.GetLogicalDevice());
+	m_DepthImage.DestroyImage(m_Device.GetLogicalDevice());
 	CreateDepthResources();
 	CreateFrameBuffers();
 }
