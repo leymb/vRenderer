@@ -69,12 +69,10 @@ bool VRenderer::Terminate()
 
 	DestroySyncObjects();
 	vkDestroyCommandPool(m_Device.GetLogicalDevice(), m_CommandPool, nullptr);
-	DestroyFrameBuffers(m_Framebuffers, m_Device.GetLogicalDevice());
 	vkDestroyPipeline(m_Device.GetLogicalDevice(), m_GraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(m_Device.GetLogicalDevice(), m_PipelineLayout, nullptr);
 	vkDestroyRenderPass(m_Device.GetLogicalDevice(), m_MainRenderPass, nullptr);
-	m_SwapChain.DestroyImageViews(m_Device.GetLogicalDevice());
-	vkDestroySwapchainKHR(m_Device.GetLogicalDevice(), m_SwapChain.GetSwapChain(), nullptr);
+	m_SwapChain.Cleanup(m_Device.GetLogicalDevice(), m_Framebuffers);
 
 	m_Texture.DestroyTexture(m_Device.GetLogicalDevice());
 	m_DepthImage.DestroyImage(m_Device.GetLogicalDevice());
@@ -105,13 +103,24 @@ void VRenderer::Render()
 	// wait for previous frame
 	vkWaitForFences(m_Device.GetLogicalDevice(), 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
 
-	// reset fences
-	vkResetFences(m_Device.GetLogicalDevice(), 1, &m_InFlightFences[m_CurrentFrame]);
-
 	// acquire image from swap chain
 	uint32_t t_ImageIndex;
-	vkAcquireNextImageKHR(m_Device.GetLogicalDevice(), m_SwapChain.GetSwapChain(), UINT64_MAX, m_ImageAcquiredSemaphores[m_CurrentFrame],
-	                      VK_NULL_HANDLE, &t_ImageIndex);
+	VkResult t_Result = vkAcquireNextImageKHR(m_Device.GetLogicalDevice(), m_SwapChain.GetSwapChain(), UINT64_MAX,
+	                                          m_ImageAcquiredSemaphores[m_CurrentFrame],
+	                                          VK_NULL_HANDLE, &t_ImageIndex);
+
+	// recreate swap chain?
+	if (t_Result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		RecreateSwapChain();
+		return;
+	} else if (t_Result != VK_SUCCESS && t_Result != VK_SUBOPTIMAL_KHR)
+	{
+		throw std::runtime_error("Error! Failed to acquire swap chain image!");
+	}
+
+	// reset fences if work is submitted
+	vkResetFences(m_Device.GetLogicalDevice(), 1, &m_InFlightFences[m_CurrentFrame]);
 
 	// update uniform buffers
 	UpdateUniformBuffers(m_CurrentFrame);
@@ -153,7 +162,17 @@ void VRenderer::Render()
 	t_PresentInfo.pImageIndices = &t_ImageIndex;
 	t_PresentInfo.pResults = nullptr;
 
-	vkQueuePresentKHR(m_PresentQueue, &t_PresentInfo);
+	t_Result = vkQueuePresentKHR(m_PresentQueue, &t_PresentInfo);
+
+	// recreate swap chain?
+	if (t_Result == VK_ERROR_OUT_OF_DATE_KHR || t_Result == VK_SUBOPTIMAL_KHR || m_FrameBufferResized)
+	{
+		m_FrameBufferResized = false;
+		RecreateSwapChain();
+	} else if (t_Result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Could not present swap chain image!");
+	}
 
 	// advance frame (and loop it around after m_MaxInFlightFrames)
 	m_CurrentFrame = (m_CurrentFrame + 1) % m_MaxInFlightFrames;
@@ -184,7 +203,7 @@ void VRenderer::InitVulkan()
 
 	CreateCommandPool();
 
-	m_Texture.CreateTextureFromImage("../vRenderer/assets/textures/me.jpg", m_Device, m_CommandPool, m_GraphicsQueue);
+	m_Texture.CreateTextureFromImage("../vRenderer/assets/textures/Logo.jpg", m_Device, m_CommandPool, m_GraphicsQueue);
 	m_Texture.CreateTextureSampler(m_Device);
 
 	m_VertexBuffer.CreateVertexBuffer(s_quad_vertices, m_Device, m_GraphicsQueue, m_CommandPool);
@@ -209,10 +228,18 @@ void VRenderer::InitGlfw(const int a_WindowWidth, const int a_WindowHeight)
 	// tell GLFW not to create an OpenGL context
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	// tell GFLW to not make the window resizable
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	// tell GFLW to make the window resizable
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	m_Window = glfwCreateWindow(a_WindowWidth, a_WindowHeight, "vRenderer", nullptr, nullptr);
+
+	glfwSetWindowUserPointer(m_Window, this);
+
+	glfwSetFramebufferSizeCallback(m_Window, [](GLFWwindow* a_Window, int a_Width, int a_Height)
+			{
+				static_cast<VRenderer*>(glfwGetWindowUserPointer(a_Window))->m_FrameBufferResized = true;
+			}
+		);
 }
 
 /// <summary>	Creates a Vulkan Instance and stores its handle in m_VInstance. </summary>
@@ -978,4 +1005,29 @@ void VRenderer::CreateDepthResources()
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		VK_IMAGE_ASPECT_DEPTH_BIT
 	);
+}
+
+void VRenderer::RecreateSwapChain()
+{
+	// handle minimization
+	int t_WindowWidth = 0;
+	int t_WindowHeight = 0;
+	glfwGetFramebufferSize(m_Window, &t_WindowWidth, &t_WindowHeight);
+	while (t_WindowWidth == 0 || t_WindowHeight == 0)
+	{
+		glfwGetFramebufferSize(m_Window, &t_WindowWidth, &t_WindowHeight);
+		glfwWaitEvents();
+	}
+
+	vkDeviceWaitIdle(m_Device.GetLogicalDevice());
+
+	// cleanup swap chain
+	m_SwapChain.Cleanup(m_Device.GetLogicalDevice(), m_Framebuffers);
+
+	// recreate swap chain
+	m_SwapChain.Create(m_Device, m_WindowSurface, m_Window);
+	m_SwapChain.CreateImageViews(m_Device.GetLogicalDevice());
+	m_DepthImage.DestroyImage(m_Device.GetLogicalDevice());
+	CreateDepthResources();
+	CreateFrameBuffers();
 }

@@ -16,6 +16,7 @@ public:
 	/// <param name="a_Window">		  	[in,out] If non-null, the window.</param>
 
 	void Create(const Device& a_Device, const VkSurfaceKHR& a_WindowSurface, GLFWwindow* a_Window);
+	void Cleanup(VkDevice a_LogicalDevice, std::vector<VkFramebuffer>& a_FramebufferVector);
 
 	VkSwapchainKHR GetSwapChain();
 
