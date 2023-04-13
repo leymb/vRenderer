@@ -184,6 +184,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="include\vRenderer\camera\Camera.h" />
     <ClInclude Include="include\vRenderer\Buffer\Buffer.h" />
     <ClInclude Include="include\vRenderer\Buffer\IndexBuffer.h" />
     <ClInclude Include="include\vRenderer\Buffer\UniformBuffer.h" />
@@ -207,6 +208,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\vRenderer\camera\Camera.cpp" />
     <ClCompile Include="src\vRenderer\Buffer\Buffer.cpp" />
     <ClCompile Include="src\vRenderer\Buffer\IndexBuffer.cpp" />
     <ClCompile Include="src\vRenderer\Buffer\UniformBuffer.cpp" />

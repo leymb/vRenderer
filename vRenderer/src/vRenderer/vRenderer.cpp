@@ -1,16 +1,17 @@
 #include "pch.h"
 #include "vRenderer/vRenderer.h"
-#include "vRenderer/helper_structs/RenderingHelpers.h"
 #include "vRenderer/helpers/helpers.h"
 #include "vRenderer/helpers/VulkanHelpers.h"
+#include "vRenderer/helper_structs/RenderingHelpers.h"
+#include "vRenderer/helper_structs/Vertex.h"
+#include "vRenderer/helper_structs/UniformBufferObject.h"
+#include "vRenderer/camera/Camera.h"
 
 #define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
-
-#include "vRenderer/helper_structs/Vertex.h"
+#include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -18,8 +19,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <chrono>
-
-#include "vRenderer/helper_structs/UniformBufferObject.h"
 
 // test vertices and indices 
 static std::vector<Vertex> s_quad_vertices = {
@@ -96,7 +95,7 @@ bool VRenderer::Terminate()
 	return true;
 }
 
-void VRenderer::Render()
+void VRenderer::Render(Camera& a_Camera)
 {
 	glfwPollEvents();
 
@@ -112,7 +111,7 @@ void VRenderer::Render()
 	// recreate swap chain?
 	if (t_Result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		RecreateSwapChain();
+		HandleResize();
 		return;
 	} else if (t_Result != VK_SUCCESS && t_Result != VK_SUBOPTIMAL_KHR)
 	{
@@ -123,7 +122,7 @@ void VRenderer::Render()
 	vkResetFences(m_Device.GetLogicalDevice(), 1, &m_InFlightFences[m_CurrentFrame]);
 
 	// update uniform buffers
-	UpdateUniformBuffers(m_CurrentFrame);
+	UpdateUniformBuffers(m_CurrentFrame, a_Camera);
 
 	// record command buffer
 	vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
@@ -168,7 +167,7 @@ void VRenderer::Render()
 	if (t_Result == VK_ERROR_OUT_OF_DATE_KHR || t_Result == VK_SUBOPTIMAL_KHR || m_FrameBufferResized)
 	{
 		m_FrameBufferResized = false;
-		RecreateSwapChain();
+		HandleResize();
 	} else if (t_Result != VK_SUCCESS)
 	{
 		throw std::runtime_error("Error! Could not present swap chain image!");
@@ -181,6 +180,12 @@ void VRenderer::Render()
 bool VRenderer::ShouldTerminate() const
 {
 	return glfwWindowShouldClose(m_Window);
+}
+
+glm::ivec2 VRenderer::GetWindowExtent()
+{
+	VkExtent2D t_SwapExtent = m_SwapChain.GetExtent();;
+	return {t_SwapExtent.width, t_SwapExtent.height};
 }
 
 void VRenderer::InitVulkan()
@@ -832,7 +837,7 @@ void VRenderer::CreateUniformBuffers()
 	}
 }
 
-void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage)
+void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera)
 {
 
 	// TODO implement better
@@ -847,11 +852,8 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage)
 
 	UniformBufferObject t_UBO = {};
 	t_UBO.m_Model = glm::rotate(glm::mat4(1.0f), t_Delta * glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
-	t_UBO.m_View = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-	VkExtent2D t_SwapExtent = m_SwapChain.GetExtent();
-	float t_AspectRatio = static_cast<float>(t_SwapExtent.width) / static_cast<float>(t_SwapExtent.height);
-	t_UBO.m_Projection = glm::perspective(glm::radians(45.0f), t_AspectRatio, 0.1f, 10.f);
+	t_UBO.m_View = a_Camera.GetViewMat();
+	t_UBO.m_Projection = a_Camera.GetProjectionMat();
 
 	// TODO remove (crutch to avoid image being upside down due to glm coordinate system)
 	t_UBO.m_Projection[1][1] *= -1;
@@ -1007,7 +1009,8 @@ void VRenderer::CreateDepthResources()
 	);
 }
 
-void VRenderer::RecreateSwapChain()
+/// <summary>	Handles resizing the window by recreating the swap chain.</summary>
+void VRenderer::HandleResize()
 {
 	// handle minimization
 	int t_WindowWidth = 0;
