@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "vRenderer/Model.h"
 
+#include <unordered_map>
 #include <glm/ext/matrix_transform.hpp>
 #include <tiny_obj/tiny_obj_loader.h>
 
@@ -101,8 +102,10 @@ void Model::LoadMesh(const char* a_ModelPath)
 	}
 
 	// combine all faces
+	std::unordered_map<Vertex, uint32_t> t_UniqueVertices{};
 	for (const tinyobj::shape_t& t_Shape : t_Shapes)
 	{
+
 		for (const auto& t_Index : t_Shape.mesh.indices)
 		{
 			Vertex t_Vertx = {};
@@ -119,10 +122,13 @@ void Model::LoadMesh(const char* a_ModelPath)
 				1.0f - t_Attrib.texcoords[2 * t_Index.texcoord_index + 1]
 			};
 
-			m_Mesh.m_Vertices.push_back(t_Vertx);
+			if (t_UniqueVertices.count(t_Vertx) == 0)
+			{
+				t_UniqueVertices[t_Vertx] = static_cast<uint32_t>(m_Mesh.m_Vertices.size());
+				m_Mesh.m_Vertices.push_back(t_Vertx);
+			}
 
-			// TODO make check to see if vertex is unique
-			m_Mesh.m_Indices.push_back(m_Mesh.m_Indices.size());
+			m_Mesh.m_Indices.push_back(t_UniqueVertices[t_Vertx]);
 		}
 	}
 }
