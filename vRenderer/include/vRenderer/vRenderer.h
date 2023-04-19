@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <glm/vec2.hpp>
 #include <vulkan/vulkan_core.h>
 
 #include "Buffer/VertexBuffer.h"
@@ -11,6 +12,7 @@
 #include "Buffer/IndexBuffer.h"
 #include "Buffer/UniformBuffer.h"
 
+class Camera;
 struct GLFWwindow;
 struct SupportedQueueFamilies;
 
@@ -31,9 +33,14 @@ public:
 	          const std::vector<const char*>& a_RequestedDeviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
 
 	bool Terminate();
-	void Render();
+	void Render(Camera& a_Camera);
 
 	bool ShouldTerminate() const;
+
+	/// <summary>	Gets window extent. </summary>
+	/// <returns>	The window extent in the format of width, height. </returns>
+
+	glm::ivec2 GetWindowExtent();
 
 	const int m_MaxInFlightFrames = 2;
 
@@ -73,7 +80,7 @@ private:
 	void RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex);
 
 	void CreateUniformBuffers();
-	void UpdateUniformBuffers(uint32_t a_CurrentImage);
+	void UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera);
 
 	VkDescriptorPool CreateDescriptorPool(int a_DescriptorCount, const VkDevice& a_LogicalDevice);
 	void CreateDescriptorSets(int a_Count, VkDevice a_LogicalDevice, VkDescriptorSetLayout& a_DescriptorSetLayout,
@@ -87,7 +94,7 @@ private:
 	// Depth Buffering
 	void CreateDepthResources();
 
-	void RecreateSwapChain();
+	void HandleResize();
 
 	// GLFW members
 	GLFWwindow* m_Window;

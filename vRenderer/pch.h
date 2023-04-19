@@ -20,5 +20,6 @@
 #include "vRenderer/SwapChain.h"
 #include "vRenderer/Texture.h"
 #include "vRenderer/Image.h"
+#include "vRenderer/camera/Camera.h"
 
 #endif //PCH_H
