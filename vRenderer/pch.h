@@ -9,17 +9,19 @@
 
 // add headers that you want to pre-compile here
 #include "framework.h"
-#include "vRenderer/vRenderer.h"
-#include "vRenderer/helper_structs/RenderingHelpers.h"
-#include "vRenderer/helpers/helpers.h"
 #include "vRenderer/Device.h"
-#include "vRenderer/Buffer/Buffer.h"
-#include "vRenderer/Buffer/VertexBuffer.h"
-#include "vRenderer/Buffer/IndexBuffer.h"
-#include "vRenderer/Buffer/UniformBuffer.h"
+#include "vRenderer/Image.h"
 #include "vRenderer/SwapChain.h"
 #include "vRenderer/Texture.h"
-#include "vRenderer/Image.h"
+#include "vRenderer/vRenderer.h"
+#include "vRenderer/Buffer/Buffer.h"
+#include "vRenderer/Buffer/IndexBuffer.h"
+#include "vRenderer/Buffer/UniformBuffer.h"
+#include "vRenderer/Buffer/VertexBuffer.h"
 #include "vRenderer/camera/Camera.h"
+#include "vRenderer/helpers/helpers.h"
+#include "vRenderer/helper_structs/Mesh.h"
+#include "vRenderer/helper_structs/RenderingHelpers.h"
+#include "vRenderer/helper_structs/Vertex.h"
 
 #endif //PCH_H

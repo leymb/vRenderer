@@ -105,12 +105,12 @@ void Texture::CreateTextureSampler(const Device& a_Device)
 	}
 }
 
-const VkImageView& Texture::GetImageView()
+const VkImageView& Texture::GetImageView() const
 {
 	return m_Texture.GetImageView();
 }
 
-const VkSampler& Texture::GetSampler()
+const VkSampler& Texture::GetSampler() const
 {
 	return m_TextureSampler;
 }

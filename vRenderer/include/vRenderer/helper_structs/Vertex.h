@@ -4,7 +4,7 @@
 struct Vertex
 {
 	glm::vec3 m_Position;
-	glm::vec3 m_Color;
+	glm::vec3 m_Color = {1.0f, 0.0f, 1.0f};
 	glm::vec2 m_TexCoord;
 
 	static VkVertexInputBindingDescription GenInputBindingDesc()

@@ -3,6 +3,8 @@
 #include <vector>
 #include <GLFW/glfw3.h>
 
+#include "helper_structs/RenderingHelpers.h"
+
 
 class Device;
 class SwapChain
