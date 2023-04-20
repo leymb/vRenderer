@@ -13,16 +13,18 @@ Image::Image()
 Image::~Image()
 = default;
 
-void Image::CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Height, VkFormat a_Format, VkImageTiling a_Tiling,
-                        VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags, VkImageAspectFlags a_ImageAspectFlag)
+void Image::CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Height, uint32_t a_MipLevel, VkFormat a_Format,
+                        VkImageTiling a_Tiling, VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags, VkImageAspectFlags a_ImageAspectFlag)
 {
+	m_Miplevels = a_MipLevel;
+
 	VkImageCreateInfo t_ImageCreateInfo = {};
 	t_ImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	t_ImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 	t_ImageCreateInfo.extent.width = a_Width;
 	t_ImageCreateInfo.extent.height = a_Height;
 	t_ImageCreateInfo.extent.depth = 1;
-	t_ImageCreateInfo.mipLevels = 1;
+	t_ImageCreateInfo.mipLevels = m_Miplevels;
 	t_ImageCreateInfo.arrayLayers = 1;
 
 	// format needs to be the same for the texels as the pixels in the buffer
@@ -48,7 +50,7 @@ void Image::CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Hei
 
 	vkBindImageMemory(a_Device.GetLogicalDevice(), m_Image, m_ImageMemory, 0);
 
-	m_ImageView = CreateImageView(a_Format, a_Device.GetLogicalDevice(),a_ImageAspectFlag);
+	m_ImageView = CreateImageView(a_Format, a_Device.GetLogicalDevice(),a_ImageAspectFlag, a_MipLevel);
 }
 
 void Image::DestroyImage(const VkDevice a_LogicalDevice)
@@ -58,7 +60,7 @@ void Image::DestroyImage(const VkDevice a_LogicalDevice)
 	vkFreeMemory(a_LogicalDevice, m_ImageMemory, nullptr);
 }
 
-VkImageView Image::CreateImageView(const VkFormat a_Format, const VkDevice a_LogicalDevice, VkImageAspectFlags a_AspectFlag) const
+VkImageView Image::CreateImageView(const VkFormat a_Format, const VkDevice a_LogicalDevice, VkImageAspectFlags a_AspectFlag, uint32_t a_MipLevel) const
 {
 	VkImageViewCreateInfo t_ViewCreateInfo = {};
 	t_ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -68,7 +70,7 @@ VkImageView Image::CreateImageView(const VkFormat a_Format, const VkDevice a_Log
 
 	t_ViewCreateInfo.subresourceRange.aspectMask = a_AspectFlag;
 	t_ViewCreateInfo.subresourceRange.baseMipLevel = 0;
-	t_ViewCreateInfo.subresourceRange.levelCount = 1;
+	t_ViewCreateInfo.subresourceRange.levelCount = a_MipLevel;
 	t_ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 	t_ViewCreateInfo.subresourceRange.layerCount = 1;
 
@@ -92,15 +94,15 @@ const VkImageView Image::GetImageView() const
 	return m_ImageView;
 }
 
-void Image::TransitionImageLayout(VkFormat a_Format, VkImageLayout a_OldLayout, VkImageLayout a_NewLayout,
-                                  VkCommandPool& a_CommandPool, const VkQueue& a_GraphicsQueue, const VkDevice& a_LogicalDevice)
+void Image::TransitionImageLayout(VkImageLayout a_OldLayout, VkImageLayout a_NewLayout, VkCommandPool& a_CommandPool,
+                                  const VkQueue& a_GraphicsQueue, const VkDevice& a_LogicalDevice, uint32_t a_MipLevel)
 {
 	VkCommandBuffer t_CmdBuffer = BeginSingleTimeCommand(a_CommandPool, a_LogicalDevice);
 
 	VkPipelineStageFlags t_SourceStage;
 	VkPipelineStageFlags t_DestinationStage;
 
-	const VkImageMemoryBarrier t_MemoryBarrier = GenImageBarrier(a_OldLayout, a_NewLayout, t_SourceStage, t_DestinationStage);
+	const VkImageMemoryBarrier t_MemoryBarrier = GenImageBarrier(a_OldLayout, a_NewLayout, t_SourceStage, t_DestinationStage, a_MipLevel);
 
 	vkCmdPipelineBarrier(t_CmdBuffer, 
 		t_SourceStage, t_DestinationStage, 
@@ -110,6 +112,11 @@ void Image::TransitionImageLayout(VkFormat a_Format, VkImageLayout a_OldLayout, 
 		1, &t_MemoryBarrier);
 
 	EndSingleTimeCommands(t_CmdBuffer, a_GraphicsQueue, a_LogicalDevice, a_CommandPool);
+}
+
+uint32_t Image::GetMipLevels()
+{
+	return m_Miplevels;
 }
 
 /// <summary>	Allocate image memory. </summary>
@@ -137,7 +144,7 @@ void Image::AllocateImageMemory(Device a_Device, VkMemoryPropertyFlags a_Propert
 
 VkImageMemoryBarrier Image::GenImageBarrier(VkImageLayout a_OldLayout, VkImageLayout a_NewLayout,
                                             VkPipelineStageFlags& a_SourceStage,
-                                            VkPipelineStageFlags& a_DestinationStage) const
+                                            VkPipelineStageFlags& a_DestinationStage, uint32_t a_MipLevel) const
 {
 	VkImageMemoryBarrier t_MemoryBarrier = {};
 	t_MemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -152,7 +159,7 @@ VkImageMemoryBarrier Image::GenImageBarrier(VkImageLayout a_OldLayout, VkImageLa
 	// sub-resource config
 	t_MemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	t_MemoryBarrier.subresourceRange.baseMipLevel = 0;
-	t_MemoryBarrier.subresourceRange.levelCount = 1;
+	t_MemoryBarrier.subresourceRange.levelCount = a_MipLevel;
 	t_MemoryBarrier.subresourceRange.baseArrayLayer = 0;
 	t_MemoryBarrier.subresourceRange.layerCount = 1;
 

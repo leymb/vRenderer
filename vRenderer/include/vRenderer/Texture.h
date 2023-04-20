@@ -34,6 +34,9 @@ public:
 
 private:
 
+	void GenMipMaps(int32_t a_TexWidth, int32_t a_TexHeight, uint32_t a_MipLevels, VkCommandPool& a_CommandPool, const Device& a_Device, const VkQueue
+	                & a_GraphicsQueue, VkFormat a_ImageFormat);
+
 	Image m_Texture;
 
 	VkSampler m_TextureSampler;
