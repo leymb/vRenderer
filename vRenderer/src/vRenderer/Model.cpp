@@ -5,7 +5,7 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <tiny_obj/tiny_obj_loader.h>
 
-Model::Model() : m_Position(glm::vec3(0.f)), m_Scale(1.0f), m_Rotation(glm::mat4(0.f))
+Model::Model() : m_Position(glm::vec3(0.f)), m_Scale(1.0f), m_Rotation(glm::mat4(1.f))
 {
 	
 }
@@ -81,9 +81,7 @@ glm::mat4 Model::GetTranslation()
 
 glm::mat4 Model::GetModelMatrix()
 {
-	//sinf(t_Delta) * 0.5f
-	// return GetTranslation() * GetRotation() * GetScale();
-	return GetScale() * GetRotation() * GetTranslation();
+	return GetTranslation() * GetRotation() * GetScale();
 }
 
 void Model::LoadMesh(const char* a_ModelPath)

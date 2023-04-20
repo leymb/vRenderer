@@ -1,8 +1,10 @@
 #include "pch.h"
 #include "vRenderer/vRenderer.h"
+
 #include "vRenderer/camera/Camera.h"
 #include "vRenderer/helpers/helpers.h"
 #include "vRenderer/helpers/VulkanHelpers.h"
+#include "vRenderer/helper_structs/Mesh.h"
 #include "vRenderer/helper_structs/RenderingHelpers.h"
 #include "vRenderer/helper_structs/UniformBufferObject.h"
 #include "vRenderer/helper_structs/Vertex.h"
@@ -15,11 +17,8 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include <chrono>
-#include <vRenderer/helper_structs/Mesh.h>
+#include <glm/glm.hpp>
 
 VRenderer::VRenderer(): m_Window(nullptr)
 {
@@ -190,7 +189,7 @@ void VRenderer::InitVulkan()
 
 	CreateCommandPool();
 
-	m_TestModel.Load("../vRenderer/assets/models/pokeball.obj", "../vRenderer/assets/textures/pokeball.jpg",
+	m_TestModel.Load("../vRenderer/assets/models/pomegranate.obj", "../vRenderer/assets/textures/pomegranate.jpg",
 	                 m_Device, m_CommandPool, m_GraphicsQueue);
 
 	m_VertexBuffer.CreateVertexBuffer(m_TestModel.GetMesh().m_Vertices, m_Device, m_GraphicsQueue, m_CommandPool);
@@ -830,8 +829,9 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera)
 	float t_Delta = std::chrono::duration<float, std::chrono::seconds::period>(t_CurrTime - t_Start).count();
 
 	UniformBufferObject t_UBO = {};
-	m_TestModel.Rotate(t_Delta * 90.f * 0.2, glm::vec3(0.0f, 0.0f, 1.0f));
-	m_TestModel.SetPosition({0.0f, 0.0f, -0.5f});
+	m_TestModel.Rotate(90, glm::vec3(1.0f, 0.0f, 0.0f));
+	m_TestModel.Rotate(t_Delta * 90.f * 0.2, glm::vec3(1.0f, 0.0f, 0.0f));
+	m_TestModel.SetScale(3.f);
 
 	t_UBO.m_Model = m_TestModel.GetModelMatrix();
 	t_UBO.m_View = a_Camera.GetViewMat();
