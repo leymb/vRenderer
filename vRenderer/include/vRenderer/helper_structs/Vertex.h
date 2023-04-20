@@ -4,7 +4,7 @@
 struct Vertex
 {
 	glm::vec3 m_Position;
-	glm::vec3 m_Color;
+	glm::vec3 m_Color = {1.0f, 0.0f, 1.0f};
 	glm::vec2 m_TexCoord;
 
 	static VkVertexInputBindingDescription GenInputBindingDesc()
@@ -42,4 +42,27 @@ struct Vertex
 
 		return t_Desc;
 	}
+
+	bool operator==(const Vertex& a_Other) const
+	{
+		return	m_Position == a_Other.m_Position		&&
+				m_Color == a_Other.m_Color			&&
+				m_TexCoord == a_Other.m_TexCoord;
+	}
 };
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
+
+namespace std
+{
+	template<> struct hash<Vertex>
+	{
+		size_t operator()(Vertex const& a_Vertex) const noexcept
+		{
+			return ((hash<glm::vec3>()(a_Vertex.m_Position) ^
+                   (hash<glm::vec3>()(a_Vertex.m_Color) << 1)) >> 1) ^
+                   (hash<glm::vec2>()(a_Vertex.m_TexCoord) << 1);
+		}
+	};
+}

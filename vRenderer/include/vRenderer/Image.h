@@ -41,7 +41,7 @@ public:
 	/// <summary>	Gets image view to the VkImage contained within this object. </summary>
 	/// <returns>	The image view. </returns>
 
-	const VkImageView GetImageView();
+	const VkImageView GetImageView() const;
 
 	void TransitionImageLayout(VkFormat a_Format, VkImageLayout a_OldLayout, VkImageLayout a_NewLayout,
 	                           VkCommandPool& a_CommandPool, const VkQueue& a_GraphicsQueue, const VkDevice& a_LogicalDevice);

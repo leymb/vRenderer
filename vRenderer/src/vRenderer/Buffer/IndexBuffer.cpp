@@ -8,7 +8,7 @@ IndexBuffer::IndexBuffer()
 IndexBuffer::~IndexBuffer()
 = default;
 
-void IndexBuffer::CreateIndexBuffer(std::vector<uint16_t> a_Indices, const Device& a_Device, VkQueue a_GraphicsQueue,
+void IndexBuffer::CreateIndexBuffer(std::vector<uint32_t>& a_Indices, const Device& a_Device, VkQueue a_GraphicsQueue,
 	              VkCommandPool a_CommandPool)
 {
 	VkDeviceSize t_BufferSize = sizeof(a_Indices[0]) * a_Indices.size();

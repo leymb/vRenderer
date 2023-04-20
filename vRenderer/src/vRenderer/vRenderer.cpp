@@ -1,11 +1,13 @@
 #include "pch.h"
 #include "vRenderer/vRenderer.h"
+
+#include "vRenderer/camera/Camera.h"
 #include "vRenderer/helpers/helpers.h"
 #include "vRenderer/helpers/VulkanHelpers.h"
+#include "vRenderer/helper_structs/Mesh.h"
 #include "vRenderer/helper_structs/RenderingHelpers.h"
-#include "vRenderer/helper_structs/Vertex.h"
 #include "vRenderer/helper_structs/UniformBufferObject.h"
-#include "vRenderer/camera/Camera.h"
+#include "vRenderer/helper_structs/Vertex.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <iostream>
@@ -15,31 +17,8 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include <chrono>
-
-// test vertices and indices 
-static std::vector<Vertex> s_quad_vertices = {
-	{{-0.5f, -0.5f, 0.0f}, {1.f, 0.f, 0.f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.f, 1.f, 0.f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f}},
-	{{-0.5f, 0.5f, 0.0f}, {1.f, 1.f, 1.f}, {1.0f, 1.0f}},
-
-	{{-0.5f, -0.5f, -0.5f}, {1.f, 0.f, 0.f}, {1.0f, 0.0f}},
-	{{0.5f, -0.5f, -0.5f}, {0.f, 1.f, 0.f}, {0.0f, 0.0f}},
-	{{0.5f, 0.5f, -0.5f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f}},
-	{{-0.5f, 0.5f, -0.5f}, {1.f, 1.f, 1.f}, {1.0f, 1.0f}}
-};
-
-static std::vector<uint16_t> s_quad_indices = {
-	0, 1, 2,
-	2, 3, 0,
-
-	4, 5, 6,
-	6, 7, 4
-};
+#include <glm/glm.hpp>
 
 VRenderer::VRenderer(): m_Window(nullptr)
 {
@@ -73,7 +52,9 @@ bool VRenderer::Terminate()
 	vkDestroyRenderPass(m_Device.GetLogicalDevice(), m_MainRenderPass, nullptr);
 	m_SwapChain.Cleanup(m_Device.GetLogicalDevice(), m_Framebuffers);
 
-	m_Texture.DestroyTexture(m_Device.GetLogicalDevice());
+	//m_Texture.DestroyTexture(m_Device.GetLogicalDevice());
+	m_TestModel.Destroy(m_Device.GetLogicalDevice());
+
 	m_DepthImage.DestroyImage(m_Device.GetLogicalDevice());
 
 	for(size_t i = 0; i < m_UniformBuffers.size(); i++)
@@ -208,11 +189,11 @@ void VRenderer::InitVulkan()
 
 	CreateCommandPool();
 
-	m_Texture.CreateTextureFromImage("../vRenderer/assets/textures/Logo.jpg", m_Device, m_CommandPool, m_GraphicsQueue);
-	m_Texture.CreateTextureSampler(m_Device);
+	m_TestModel.Load("../vRenderer/assets/models/pomegranate.obj", "../vRenderer/assets/textures/pomegranate.jpg",
+	                 m_Device, m_CommandPool, m_GraphicsQueue);
 
-	m_VertexBuffer.CreateVertexBuffer(s_quad_vertices, m_Device, m_GraphicsQueue, m_CommandPool);
-	m_IndexBuffer.CreateIndexBuffer(s_quad_indices, m_Device, m_GraphicsQueue, m_CommandPool);
+	m_VertexBuffer.CreateVertexBuffer(m_TestModel.GetMesh().m_Vertices, m_Device, m_GraphicsQueue, m_CommandPool);
+	m_IndexBuffer.CreateIndexBuffer(m_TestModel.GetMesh().m_Indices, m_Device, m_GraphicsQueue, m_CommandPool);
 	CreateUniformBuffers();
 	m_DescriptorPool = CreateDescriptorPool(m_MaxInFlightFrames, m_Device.GetLogicalDevice());
 	CreateDescriptorSets(m_MaxInFlightFrames, m_Device.GetLogicalDevice(), m_DescriptorSetLayout, m_DescriptorPool,
@@ -784,7 +765,7 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	vkCmdBindVertexBuffers(m_CommandBuffers[m_CurrentFrame], 0, 1, t_VertexBuffers, t_Offsets);
 
 	// Bind Index Buffer
-	vkCmdBindIndexBuffer(m_CommandBuffers[m_CurrentFrame], m_IndexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindIndexBuffer(m_CommandBuffers[m_CurrentFrame], m_IndexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 	const VkExtent2D t_SwapChainExtent = m_SwapChain.GetExtent();
 
@@ -813,7 +794,7 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	                        &m_DescriptorSets[m_CurrentFrame], 0, nullptr);
 
 	// Draw
-	vkCmdDrawIndexed(m_CommandBuffers[m_CurrentFrame], static_cast<uint32_t>(s_quad_indices.size()), 1, 0, 0, 0);
+	vkCmdDrawIndexed(m_CommandBuffers[m_CurrentFrame], static_cast<uint32_t>(m_TestModel.GetMesh().m_Indices.size()), 1, 0, 0, 0);
 
 
 	// end render pass
@@ -847,11 +828,12 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera)
 	const auto t_CurrTime = std::chrono::high_resolution_clock::now();
 	float t_Delta = std::chrono::duration<float, std::chrono::seconds::period>(t_CurrTime - t_Start).count();
 
-	// TODO make cgamera class that calculates view & projection and contains near & far
-	// TODO move model mat into individual mesh class
-
 	UniformBufferObject t_UBO = {};
-	t_UBO.m_Model = glm::rotate(glm::mat4(1.0f), t_Delta * glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
+	m_TestModel.Rotate(90, glm::vec3(1.0f, 0.0f, 0.0f));
+	m_TestModel.Rotate(t_Delta * 90.f * 0.2, glm::vec3(1.0f, 0.0f, 0.0f));
+	m_TestModel.SetScale(3.f);
+
+	t_UBO.m_Model = m_TestModel.GetModelMatrix();
 	t_UBO.m_View = a_Camera.GetViewMat();
 	t_UBO.m_Projection = a_Camera.GetProjectionMat();
 
@@ -920,8 +902,8 @@ void VRenderer::CreateDescriptorSets(int a_Count, VkDevice a_LogicalDevice,
 		// for image sampler
 		VkDescriptorImageInfo t_ImageInfo = {};
 		t_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		t_ImageInfo.imageView = m_Texture.GetImageView();
-		t_ImageInfo.sampler = m_Texture.GetSampler();
+		t_ImageInfo.imageView = m_TestModel.GetTexture().GetImageView();
+		t_ImageInfo.sampler = m_TestModel.GetTexture().GetSampler();
 
 		std::array<VkWriteDescriptorSet, 2> t_DescriptorWrites = {};
 

@@ -1,6 +1,7 @@
 #pragma once
 #define STB_IMAGE_IMPLEMENTATION
 #include "Image.h"
+#include "Buffer/Buffer.h"
 
 // todo remove parenting to buffer
 class Texture : private Buffer
@@ -27,9 +28,9 @@ public:
 
 	void CreateTextureSampler(const Device& a_Device);
 
-	const VkImageView& GetImageView();
+	const VkImageView& GetImageView() const;
 
-	const VkSampler& GetSampler();
+	const VkSampler& GetSampler() const;
 
 private:
 

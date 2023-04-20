@@ -8,7 +8,7 @@ public:
 	IndexBuffer();
 	~IndexBuffer();
 
-	void CreateIndexBuffer(std::vector<uint16_t> a_Indices, const Device& a_Device, VkQueue a_GraphicsQueue,
+	void CreateIndexBuffer(std::vector<uint32_t>& a_Indices, const Device& a_Device, VkQueue a_GraphicsQueue,
 	              VkCommandPool a_CommandPool);
 
 private:
