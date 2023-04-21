@@ -53,11 +53,11 @@ void Texture::CreateTextureFromImage(const char* a_FilePath, const Device& a_Dev
 	stbi_image_free(t_Pixels);
 
 	// create Image
-	m_Texture.CreateImage(a_Device, t_TextureWidth, t_TextureHeight, t_MipLevels, VK_FORMAT_R8G8B8A8_SRGB,
+	m_Texture.CreateImage(a_Device, t_TextureWidth, t_TextureHeight, t_MipLevels, VK_SAMPLE_COUNT_1_BIT,
+	                      VK_FORMAT_R8G8B8A8_SRGB,
 	                      VK_IMAGE_TILING_OPTIMAL,
 	                      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-	                      VK_IMAGE_USAGE_SAMPLED_BIT,
-	                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+	                      VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	// transition image layout safely using image memory barrier
 	m_Texture.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,

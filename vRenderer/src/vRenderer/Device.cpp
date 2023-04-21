@@ -18,6 +18,11 @@ VkDevice Device::GetLogicalDevice() const
 	return m_LogicalDevice;
 }
 
+VkSampleCountFlagBits Device::GetMSAASampleCount() const
+{
+	return m_MSAASampleCount;
+}
+
 /// <summary>
 /// 	This function queries all existing physical devices (graphics cards) and chooses the
 /// 	first one that suits the provided requirements.
@@ -61,9 +66,11 @@ VkPhysicalDevice Device::ChoosePhysicalDevice(VkInstance& a_Instance, VkSurfaceK
 	vkGetPhysicalDeviceProperties(t_PhysicalDevice,&t_DeviceProperties);
 
 	m_PhysicalDevice = t_PhysicalDevice;
+	m_MSAASampleCount = CheckMSAASampleCount(t_PhysicalDevice);
 
 #ifdef _DEBUG
-	std::cout << "Chose " << t_DeviceProperties.deviceName << " as physical device." << std::endl; 
+	std::cout << "Chose " << t_DeviceProperties.deviceName << " as physical device." << std::endl;
+	std::cout << "Physical Device supports up to " << m_MSAASampleCount << " MSAA Samples" << std::endl;
 #endif
 
 	return t_PhysicalDevice;
@@ -129,6 +136,27 @@ bool Device::CheckDeviceExtensionSupport(VkPhysicalDevice a_Device, const std::v
 	}
 
 	return t_ExtensionsRequested.empty();
+}
+
+/// <summary>	Queries the maximum MSAA samples the physical device supports. </summary>
+/// <returns>	The VkSampleCountFlagBits. </returns>
+
+VkSampleCountFlagBits Device::CheckMSAASampleCount(VkPhysicalDevice& a_PhysicalDevice)
+{
+	VkPhysicalDeviceProperties t_PhysicalDeviceProperties;
+	vkGetPhysicalDeviceProperties(a_PhysicalDevice, &t_PhysicalDeviceProperties);
+
+	VkSampleCountFlags t_SampleCount = t_PhysicalDeviceProperties.limits.framebufferColorSampleCounts &
+		t_PhysicalDeviceProperties.limits.framebufferDepthSampleCounts;
+
+	if (t_SampleCount & VK_SAMPLE_COUNT_64_BIT) {return VK_SAMPLE_COUNT_64_BIT;}
+	if (t_SampleCount & VK_SAMPLE_COUNT_32_BIT) {return VK_SAMPLE_COUNT_32_BIT;}
+	if (t_SampleCount & VK_SAMPLE_COUNT_16_BIT) {return VK_SAMPLE_COUNT_16_BIT;}
+	if (t_SampleCount & VK_SAMPLE_COUNT_8_BIT) {return VK_SAMPLE_COUNT_8_BIT;}
+	if (t_SampleCount & VK_SAMPLE_COUNT_4_BIT) {return VK_SAMPLE_COUNT_4_BIT;}
+	if (t_SampleCount & VK_SAMPLE_COUNT_2_BIT) {return VK_SAMPLE_COUNT_2_BIT;}
+
+	return VK_SAMPLE_COUNT_1_BIT;
 }
 
 //bool Device::CheckSwapChainCompatibility(VkPhysicalDevice a_Device, VkSurfaceKHR a_Surface) const
