@@ -210,6 +210,7 @@ void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsQueu
 	// TODO specify the actual features later when they become relevant
 	VkPhysicalDeviceFeatures t_PhysicalDeviceFeatures = {};
 	t_PhysicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
+	t_PhysicalDeviceFeatures.sampleRateShading = VK_TRUE;
 
 	// create the logical device
 	VkDeviceCreateInfo t_LogicalDeviceCreateInfo = {};

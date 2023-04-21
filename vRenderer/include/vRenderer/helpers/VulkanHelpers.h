@@ -102,9 +102,9 @@ inline VkPipelineMultisampleStateCreateInfo GenMultisamplingStateCreateInfo(VkSa
 	VkPipelineMultisampleStateCreateInfo t_MultisampleState = {};
 
 	t_MultisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	t_MultisampleState.sampleShadingEnable = VK_FALSE;
+	t_MultisampleState.sampleShadingEnable = VK_TRUE;
 	t_MultisampleState.rasterizationSamples = a_MSAASampleCount;
-	t_MultisampleState.minSampleShading = 1.0f;
+	t_MultisampleState.minSampleShading = 0.2f;
 	t_MultisampleState.pSampleMask = nullptr;
 	t_MultisampleState.alphaToCoverageEnable = VK_FALSE;
 	t_MultisampleState.alphaToOneEnable = VK_FALSE;
