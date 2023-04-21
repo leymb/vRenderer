@@ -13,8 +13,9 @@ Image::Image()
 Image::~Image()
 = default;
 
-void Image::CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Height, uint32_t a_MipLevel, VkFormat a_Format,
-                        VkImageTiling a_Tiling, VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags, VkImageAspectFlags a_ImageAspectFlag)
+void Image::CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Height, uint32_t a_MipLevel,
+                        VkSampleCountFlagBits a_MSAASampleCount, VkFormat a_Format, VkImageTiling a_Tiling,
+                        VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags, VkImageAspectFlags a_ImageAspectFlag)
 {
 	m_Miplevels = a_MipLevel;
 
@@ -38,7 +39,7 @@ void Image::CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Hei
 
 	t_ImageCreateInfo.usage = a_UsageFlags;
 	t_ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	t_ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	t_ImageCreateInfo.samples = a_MSAASampleCount;
 	t_ImageCreateInfo.flags = 0;
 
 	if(vkCreateImage(a_Device.GetLogicalDevice(), &t_ImageCreateInfo, nullptr, &m_Image) != VK_SUCCESS)

@@ -31,6 +31,11 @@ public:
 	VkPhysicalDevice GetPhysicalDevice() const;
 	VkDevice GetLogicalDevice() const;
 
+	/// <summary>	Gets maximum MSAA samples the physical device supports. </summary>
+	/// <returns>	The maximum MSAA sample count. </returns>
+
+	VkSampleCountFlagBits GetMSAASampleCount() const;
+
 private:
 
 	bool CheckDeviceSuitability(VkPhysicalDevice a_Device, VkSurfaceKHR a_Surface, const std::vector<const char*>& a_RequestedDeviceExtensions) const;
@@ -39,7 +44,11 @@ private:
 
 	bool CheckDeviceExtensionSupport(VkPhysicalDevice a_Device, const std::vector<const char*>& a_RequestedDeviceExtensions) const;
 
+	VkSampleCountFlagBits CheckMSAASampleCount(VkPhysicalDevice& a_PhysicalDevice);
+
 	VkPhysicalDevice m_PhysicalDevice;
 	VkDevice m_LogicalDevice;
+
+	VkSampleCountFlagBits m_MSAASampleCount;
 };
 

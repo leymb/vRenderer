@@ -10,16 +10,21 @@ public:
 	/// <summary>
 	/// 	Creates a VkImage and allocates device memory for it based on the provided parameters.
 	/// </summary>
-	/// <param name="a_Device">		  	The device.</param>
-	/// <param name="a_Width">		  	The width.</param>
-	/// <param name="a_Height">		  	The height.</param>
-	/// <param name="a_Format">		  	Describes the format to use.</param>
-	/// <param name="a_Tiling">		  	The tiling.</param>
-	/// <param name="a_UsageFlags">   	The usage flags.</param>
-	/// <param name="a_PropertyFlags">	The property flags.</param>
+	/// <param name="a_Device">				The device.</param>
+	/// <param name="a_Width">				The width.</param>
+	/// <param name="a_Height">				The height.</param>
+	/// <param name="a_MipLevel">			The mip level.</param>
+	/// <param name="a_MSAASampleCount">	Number of msaa samples.</param>
+	/// <param name="a_Format">				Describes the format to use.</param>
+	/// <param name="a_Tiling">				The tiling.</param>
+	/// <param name="a_UsageFlags">			The usage flags.</param>
+	/// <param name="a_PropertyFlags">  	The property flags.</param>
+	/// <param name="a_ImageAspectFlag">	The image aspect flag.</param>
 
-	void CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Height, uint32_t a_MipLevel, VkFormat a_Format,
-	                 VkImageTiling a_Tiling, VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags, VkImageAspectFlags a_ImageAspectFlag);
+	void CreateImage(const Device& a_Device, uint32_t a_Width, uint32_t a_Height, uint32_t a_MipLevel,
+	                 VkSampleCountFlagBits a_MSAASampleCount, VkFormat a_Format, VkImageTiling a_Tiling,
+	                 VkImageUsageFlags a_UsageFlags, VkMemoryPropertyFlags a_PropertyFlags,
+	                 VkImageAspectFlags a_ImageAspectFlag);
 
 	/// <summary>	Destroys the VkImage and frees its memory. </summary>
 	/// <param name="a_LogicalDevice">	The logical device.</param>

@@ -55,6 +55,7 @@ bool VRenderer::Terminate()
 	//m_Texture.DestroyTexture(m_Device.GetLogicalDevice());
 	m_TestModel.Destroy(m_Device.GetLogicalDevice());
 
+	m_ColorImage.DestroyImage(m_Device.GetLogicalDevice());
 	m_DepthImage.DestroyImage(m_Device.GetLogicalDevice());
 
 	for(size_t i = 0; i < m_UniformBuffers.size(); i++)
@@ -184,6 +185,7 @@ void VRenderer::InitVulkan()
 	m_DescriptorSetLayout = UniformBuffer::CreateDescriptorSetLayout(m_Device.GetLogicalDevice());
 	CreateGraphicsPipeline();
 
+	CreateColorResources();
 	CreateDepthResources();
 	CreateFrameBuffers();
 
@@ -472,7 +474,7 @@ void VRenderer::CreateGraphicsPipeline()
 	VkPipelineRasterizationStateCreateInfo t_RasterizationStateCreateInfo = GenRasterizationStateCreateInfo();
 
 	// generate Multisampling State Create Info
-	VkPipelineMultisampleStateCreateInfo t_MultisampleState = GenMultisamplingStateCreateInfo();
+	VkPipelineMultisampleStateCreateInfo t_MultisampleState = GenMultisamplingStateCreateInfo(m_Device.GetMSAASampleCount());
 
 
 	// generate ColorBlendAttachementState CreateInfo
@@ -572,8 +574,8 @@ void VRenderer::CreateRenderPass()
 	VkAttachmentDescription t_ColorAttachement = {};
 	t_ColorAttachement.format = m_SwapChain.GetFormat();
 
-	// no multisampling, so keep this to 1
-	t_ColorAttachement.samples = VK_SAMPLE_COUNT_1_BIT;
+	// set to maximum physical device-supported MSAA samples
+	t_ColorAttachement.samples = m_Device.GetMSAASampleCount();
 
 	// clear the framebuffer before drawing a new frame
 	t_ColorAttachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -586,13 +588,13 @@ void VRenderer::CreateRenderPass()
 
 	// specify the layout of the image before and after the render pass finishes
 	t_ColorAttachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	t_ColorAttachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	t_ColorAttachement.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 
 	// Depth Buffer Attachment
 	VkAttachmentDescription t_DepthAttachment = {};
 	t_DepthAttachment.format = FindDepthFormat(m_Device.GetPhysicalDevice());
-	t_DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	t_DepthAttachment.samples = m_Device.GetMSAASampleCount();
 	t_DepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	t_DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	t_DepthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -600,6 +602,16 @@ void VRenderer::CreateRenderPass()
 	t_DepthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	t_DepthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+	// resolve attachment
+	VkAttachmentDescription t_ColorResolveAttachment = {};
+	t_ColorResolveAttachment.format = m_SwapChain.GetFormat();
+	t_ColorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	t_ColorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	t_ColorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	t_ColorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	t_ColorResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	t_ColorResolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	t_ColorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	// attachment references
 	VkAttachmentReference t_ColorAttachmentReference;
@@ -609,6 +621,10 @@ void VRenderer::CreateRenderPass()
 	VkAttachmentReference t_DepthAttachmentReference;
 	t_DepthAttachmentReference.attachment = 1;
 	t_DepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference t_ColorResolveAttachmentReference;
+	t_ColorResolveAttachmentReference.attachment = 2;
+	t_ColorResolveAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 
 	// sub-passes
@@ -620,6 +636,7 @@ void VRenderer::CreateRenderPass()
 	t_SubpassDescription.colorAttachmentCount = 1;
 	t_SubpassDescription.pColorAttachments = &t_ColorAttachmentReference;
 	t_SubpassDescription.pDepthStencilAttachment = &t_DepthAttachmentReference;
+	t_SubpassDescription.pResolveAttachments = &t_ColorResolveAttachmentReference;
 
 	// handle sub-pass dependencies
 	VkSubpassDependency t_SubpassDependency = {};
@@ -631,7 +648,9 @@ void VRenderer::CreateRenderPass()
 	t_SubpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 	// create render pass
-	std::array<VkAttachmentDescription, 2> t_AttachmentDescriptions = {t_ColorAttachement, t_DepthAttachment};
+	std::array<VkAttachmentDescription, 3> t_AttachmentDescriptions = {
+		t_ColorAttachement, t_DepthAttachment, t_ColorResolveAttachment
+	};
 
 	VkRenderPassCreateInfo t_RenderPassCreateInfo = {};
 	t_RenderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -659,10 +678,11 @@ void VRenderer::CreateFrameBuffers()
 	// iterate over the SwapChainImageViews vector and create a frame buffer per image
 	for (size_t i = 0; i < t_SwapChainImageViews.size(); i++)
 	{
-		const std::array<VkImageView, 2> t_Attachments = 
+		const std::array<VkImageView, 3> t_Attachments = 
 		{
-			t_SwapChainImageViews[i],
-			m_DepthImage.GetImageView()
+			m_ColorImage.GetImageView(),
+			m_DepthImage.GetImageView(),
+			t_SwapChainImageViews[i]
 		};
 
 		VkFramebufferCreateInfo t_BufferCreateInfo = {};
@@ -746,9 +766,10 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	t_RenderPassBeginInfo.renderArea.extent = m_SwapChain.GetExtent();
 
 	// clear values
-	std::array<VkClearValue, 2> t_ClearValues = {};
+	std::array<VkClearValue, 3> t_ClearValues = {};
 	t_ClearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
 	t_ClearValues[1].depthStencil = { 1.0f, 0 };
+	t_ClearValues[2].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
 
 	t_RenderPassBeginInfo.clearValueCount = static_cast<uint32_t>(t_ClearValues.size());
 	t_RenderPassBeginInfo.pClearValues = t_ClearValues.data();
@@ -984,11 +1005,23 @@ void VRenderer::CreateDepthResources()
 		m_Device, 
 		m_SwapChain.GetExtent().width, m_SwapChain.GetExtent().height,
 		1,
+		m_Device.GetMSAASampleCount(),
 		t_DepthFormat,
 		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_ASPECT_DEPTH_BIT
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_ASPECT_DEPTH_BIT
 	);
+}
+
+/// <summary>	Creates color resources used for MSAA. </summary>
+void VRenderer::CreateColorResources()
+{
+	VkFormat t_ColorFormat = m_SwapChain.GetFormat();
+	VkExtent2D t_SwapExtent = m_SwapChain.GetExtent();
+
+	m_ColorImage.CreateImage(m_Device, t_SwapExtent.width, t_SwapExtent.height, 1, m_Device.GetMSAASampleCount(),
+	                         t_ColorFormat, VK_IMAGE_TILING_OPTIMAL,
+	                         VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+	                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 /// <summary>	Handles resizing the window by recreating the swap chain.</summary>
@@ -1013,6 +1046,9 @@ void VRenderer::HandleResize()
 	m_SwapChain.Create(m_Device, m_WindowSurface, m_Window);
 	m_SwapChain.CreateImageViews(m_Device.GetLogicalDevice());
 	m_DepthImage.DestroyImage(m_Device.GetLogicalDevice());
+	m_ColorImage.DestroyImage(m_Device.GetLogicalDevice());
+
+	CreateColorResources();
 	CreateDepthResources();
 	CreateFrameBuffers();
 }

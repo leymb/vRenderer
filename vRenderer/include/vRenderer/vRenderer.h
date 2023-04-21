@@ -95,6 +95,9 @@ private:
 	// Depth Buffering
 	void CreateDepthResources();
 
+	// MSAA
+	void CreateColorResources();
+
 	void HandleResize();
 
 	// GLFW members
@@ -138,6 +141,9 @@ private:
 	Model m_TestModel;
 
 	Image m_DepthImage;
+
+	// used for MSAA
+	Image m_ColorImage;
 
 	bool m_FrameBufferResized = false;
 };
