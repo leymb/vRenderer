@@ -137,6 +137,7 @@ private:
 
 	VertexBuffer m_VertexBuffer;
 	IndexBuffer m_IndexBuffer;
+	Buffer m_ParticleBuffer;
 
 	Model m_TestModel;
 

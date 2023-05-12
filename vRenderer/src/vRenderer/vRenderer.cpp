@@ -177,7 +177,7 @@ void VRenderer::InitVulkan()
 
 	m_Device.ChoosePhysicalDevice(m_VInstance, m_WindowSurface, m_RequestedDeviceExtensions);
 	m_Device.CreateLogicalDevice(m_WindowSurface, m_GraphicsQueue, m_PresentQueue, m_RequestedDeviceExtensions,
-	                             m_EnabledValidationLayers);
+		m_EnabledValidationLayers);
 
 	m_SwapChain.Create(m_Device, m_WindowSurface, m_Window);
 	m_SwapChain.CreateImageViews(m_Device.GetLogicalDevice());
@@ -191,11 +191,17 @@ void VRenderer::InitVulkan()
 
 	CreateCommandPool();
 
-	m_TestModel.Load("../vRenderer/assets/models/pomegranate.obj", "../vRenderer/assets/textures/pomegranate.jpg",
-	                 m_Device, m_CommandPool, m_GraphicsQueue);
+	m_TestModel.Load("../vRenderer/assets/models/pokeball.obj", "../vRenderer/assets/textures/pokeball.jpg",
+		m_Device, m_CommandPool, m_GraphicsQueue);
 
 	m_VertexBuffer.CreateVertexBuffer(m_TestModel.GetMesh().m_Vertices, m_Device, m_GraphicsQueue, m_CommandPool);
 	m_IndexBuffer.CreateIndexBuffer(m_TestModel.GetMesh().m_Indices, m_Device, m_GraphicsQueue, m_CommandPool);
+
+
+	m_ParticleBuffer.CreateBuffer(t_ParticleBufferSize,
+	                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+	                              VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_Device);
+
 	CreateUniformBuffers();
 	m_DescriptorPool = CreateDescriptorPool(m_MaxInFlightFrames, m_Device.GetLogicalDevice());
 	CreateDescriptorSets(m_MaxInFlightFrames, m_Device.GetLogicalDevice(), m_DescriptorSetLayout, m_DescriptorPool,
@@ -711,7 +717,7 @@ void VRenderer::CreateCommandPool()
 
 	// allow command buffers to be rerecorded individually
 	t_CommandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	t_CommandPoolCreateInfo.queueFamilyIndex = t_QueueFamilyIndices.m_GraphicsFamily.value();
+	t_CommandPoolCreateInfo.queueFamilyIndex = t_QueueFamilyIndices.m_GraphicsAndComputeFamily.value();
 
 	// create command pool
 	if (vkCreateCommandPool(m_Device.GetLogicalDevice(), &t_CommandPoolCreateInfo, nullptr, &m_CommandPool) != VK_SUCCESS)
@@ -850,9 +856,8 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera)
 	float t_Delta = std::chrono::duration<float, std::chrono::seconds::period>(t_CurrTime - t_Start).count();
 
 	UniformBufferObject t_UBO = {};
-	m_TestModel.Rotate(90, glm::vec3(1.0f, 0.0f, 0.0f));
-	m_TestModel.Rotate(t_Delta * 90.f * 0.2, glm::vec3(1.0f, 0.0f, 0.0f));
-	m_TestModel.SetScale(3.f);
+	m_TestModel.Rotate(t_Delta * 90.f * 0.2, glm::vec3(0.0f, 0.0f, 1.0f));
+	m_TestModel.SetPosition({0.f, 0.f, -0.5f});
 
 	t_UBO.m_Model = m_TestModel.GetModelMatrix();
 	t_UBO.m_View = a_Camera.GetViewMat();

@@ -50,11 +50,11 @@ void SwapChain::Create(const Device& a_Device, const VkSurfaceKHR& a_WindowSurfa
 	// define how the swap chain is supposed to handle images shared between multiple queues
 	SupportedQueueFamilies t_SupportedQueueFamilies = CheckSupportedQueueFamilies(a_Device.GetPhysicalDevice(), a_WindowSurface);
 	uint32_t t_QueueFamilyIndices[] = {
-		t_SupportedQueueFamilies.m_GraphicsFamily.value(), t_SupportedQueueFamilies.m_PresentFamily.value()
+		t_SupportedQueueFamilies.m_GraphicsAndComputeFamily.value(), t_SupportedQueueFamilies.m_PresentFamily.value()
 	};
 
 	// if the families of the Graphics Queue and the Present Queue are different
-	if (t_SupportedQueueFamilies.m_GraphicsFamily != t_SupportedQueueFamilies.m_PresentFamily)
+	if (t_SupportedQueueFamilies.m_GraphicsAndComputeFamily != t_SupportedQueueFamilies.m_PresentFamily)
 	{
 		// set image and its sub-resources to be accessible from multiple queues
 		// and add these queues to the create info

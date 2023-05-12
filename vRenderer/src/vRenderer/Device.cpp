@@ -167,7 +167,7 @@ VkSampleCountFlagBits Device::CheckMSAASampleCount(VkPhysicalDevice& a_PhysicalD
 //			!t_SwapChainInfo.m_SupportedSurfaceFormats.empty();
 //}
 
-void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsQueue, VkQueue& a_PresentQueue, const std::vector<const char*>& a_RequestedDeviceExtensions,
+void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsAndComputeQueue, VkQueue& a_PresentQueue, const std::vector<const char*>& a_RequestedDeviceExtensions,
                                  const std::vector<const char*>& a_EnabledValidationLayers)
 {
 	if (m_PhysicalDevice == VK_NULL_HANDLE)
@@ -181,7 +181,7 @@ void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsQueu
 
 	// create vector of creation info structs for all unique queue families
 	std::vector<VkDeviceQueueCreateInfo> t_QueueCreateInfos;
-	std::set<uint32_t> t_UniqueQueueFamilies = {t_QueueFamilies.m_GraphicsFamily.value(), t_QueueFamilies.m_PresentFamily.value()};
+	std::set<uint32_t> t_UniqueQueueFamilies = {t_QueueFamilies.m_GraphicsAndComputeFamily.value(), t_QueueFamilies.m_PresentFamily.value()};
 
 	float t_QueuePriorities = 1.0f;
 	for (uint32_t t_QueueFamily : t_UniqueQueueFamilies)
@@ -198,7 +198,7 @@ void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsQueu
 
 	VkDeviceQueueCreateInfo t_DeviceQueueCreateInfo = {};
 	t_DeviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	t_DeviceQueueCreateInfo.queueFamilyIndex = t_QueueFamilies.m_GraphicsFamily.value();
+	t_DeviceQueueCreateInfo.queueFamilyIndex = t_QueueFamilies.m_GraphicsAndComputeFamily.value();
 
 	// only one queue (with graphics capabilities) is currently required as all command buffers
 	// can be created on separate threats and then submitted all at once
@@ -235,11 +235,12 @@ void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsQueu
 		throw std::runtime_error("Failed to create logical device!");
 	}
 
-	// create Graphics Queue, store the queue handles for later use
-	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_GraphicsFamily.value(), 0, &a_GraphicsQueue);
+	// create Graphics and Compute Queue, store the queue handles for later use
+	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_GraphicsAndComputeFamily.value(), 0, &a_GraphicsAndComputeQueue);
 
 	// create present queue, store the queue handle for later use
 	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_PresentFamily.value(), 0, &a_PresentQueue);
+
 }
 
 // Note: might cause issues because it returns a copy, not a reference

@@ -168,6 +168,7 @@ inline void DestroyFrameBuffers(std::vector<VkFramebuffer>& a_FramebufferVector,
 
 /// <summary>
 /// 	Checks whether any provided Queue supports the operations required by this application.
+/// 	Currently checks for a Queue supporting both Graphics and Compute operations.
 /// </summary>
 /// <param name="a_QueueFamilyProperty">	The properties of the queue family for which to check
 /// 										the suitability.</param>
@@ -177,7 +178,7 @@ inline void DestroyFrameBuffers(std::vector<VkFramebuffer>& a_FramebufferVector,
 inline bool CheckQueueFamilySupportedOperations(VkQueueFamilyProperties a_QueueFamilyProperty)
 {
 	// Check for supported operations.
-	if (a_QueueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+	if ( (a_QueueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (a_QueueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) )
 	{
 		return true;
 	}
@@ -222,7 +223,7 @@ inline SupportedQueueFamilies CheckSupportedQueueFamilies(const VkPhysicalDevice
 	{
 		if (CheckQueueFamilySupportedOperations(t_QueueFamilyProperties[i]))
 		{
-			t_QueueFamilies.m_GraphicsFamily = i;
+			t_QueueFamilies.m_GraphicsAndComputeFamily = i;
 		}
 
 		if (CheckQueueFamilySupportsPresentation(a_Device, i, a_Surface))

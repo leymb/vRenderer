@@ -19,12 +19,12 @@ public:
 	/// 	Creates a logical device. Requires that a physical device has been selected first.
 	/// </summary>
 	/// <param name="a_Surface">				  	The surface.</param>
-	/// <param name="a_GraphicsQueue">			  	Queue of graphics.</param>
+	/// <param name="a_GraphicsAndComputeQueue">	Queue supporting both Graphics and Compute Operations.</param>
 	/// <param name="a_PresentQueue">			  	Queue of presents.</param>
 	/// <param name="a_RequestedDeviceExtensions">	The requested device extensions.</param>
 	/// <param name="a_EnabledValidationLayers">  	The enabled validation layers.</param>
 
-	void CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsQueue, VkQueue& a_PresentQueue,
+	void CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsAndComputeQueue, VkQueue& a_PresentQueue,
 	                         const std::vector<const char*>& a_RequestedDeviceExtensions,
 	                         const std::vector<const char*>& a_EnabledValidationLayers);
 

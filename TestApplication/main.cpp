@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 	const int t_WindowWidth = 800;
 	const int t_WindowHeight = 600;
 
-	Camera t_Camera = {{0.0f, 2.0f, 1.0f}, t_WindowWidth, t_WindowHeight};
+	Camera t_Camera = {{0.0f, 5.0f, 2.0f}, t_WindowWidth, t_WindowHeight};
 
 	VRenderer t_Renderer = {};
 	t_Renderer.Init(t_WindowWidth, t_WindowHeight);

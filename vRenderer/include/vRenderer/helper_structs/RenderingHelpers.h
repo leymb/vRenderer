@@ -4,7 +4,7 @@
 
 struct SupportedQueueFamilies
 {
-	std::optional<uint32_t> m_GraphicsFamily;
+	std::optional<uint32_t> m_GraphicsAndComputeFamily;
 	std::optional<uint32_t> m_PresentFamily;
 
 	/// <summary>
@@ -14,7 +14,7 @@ struct SupportedQueueFamilies
 
 	bool IsComplete() const
 	{
-		return m_GraphicsFamily.has_value() && m_PresentFamily.has_value();
+		return m_GraphicsAndComputeFamily.has_value() && m_PresentFamily.has_value();
 	}
 };
 
