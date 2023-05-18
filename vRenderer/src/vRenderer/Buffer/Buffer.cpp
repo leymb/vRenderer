@@ -50,7 +50,7 @@ const VkBuffer& Buffer::GetBuffer() const
 }
 
 void Buffer::CopyInto(VkBuffer a_DstBuffer, VkDevice a_LogicalDevice, VkDeviceSize a_DeviceSize, VkQueue a_GraphicsQueue,
-	              VkCommandPool a_CommandPool)
+	              VkCommandPool a_CommandPool) const
 {
 	VkCommandBuffer t_CmdBuffer = BeginSingleTimeCommand(a_CommandPool, a_LogicalDevice);
 

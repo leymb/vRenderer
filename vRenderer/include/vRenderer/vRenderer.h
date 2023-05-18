@@ -13,6 +13,7 @@
 #include "Buffer/IndexBuffer.h"
 #include "Buffer/UniformBuffer.h"
 
+class ShaderStorageBuffer;
 class Camera;
 struct GLFWwindow;
 struct SupportedQueueFamilies;
@@ -100,6 +101,9 @@ private:
 
 	void HandleResize();
 
+	// Compute
+	void GenShaderStorageBuffers();
+
 	// GLFW members
 	GLFWwindow* m_Window;
 	VkSurfaceKHR m_WindowSurface;
@@ -138,6 +142,7 @@ private:
 	VertexBuffer m_VertexBuffer;
 	IndexBuffer m_IndexBuffer;
 	Buffer m_ParticleBuffer;
+	std::vector<ShaderStorageBuffer> m_ShaderStorageBuffers;
 
 	Model m_TestModel;
 

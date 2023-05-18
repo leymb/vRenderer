@@ -36,7 +36,7 @@ public:
 	/// <param name="a_CommandPool">  	The command pool that should execute the transfer commands.</param>
 
 	void CopyInto(VkBuffer a_DstBuffer, VkDevice a_LogicalDevice, VkDeviceSize a_DeviceSize, VkQueue a_GraphicsQueue,
-	              VkCommandPool a_CommandPool);
+	              VkCommandPool a_CommandPool) const;
 
 	/// <summary>	Copies the buffer to a provided VkImage. </summary>
 	/// <param name="a_Image">		  	[in,out] The image.</param>

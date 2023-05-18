@@ -18,7 +18,10 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <chrono>
+#include <random>
 #include <glm/glm.hpp>
+
+#include "vRenderer/Buffer/ShaderStorageBuffer.h"
 
 VRenderer::VRenderer(): m_Window(nullptr)
 {
@@ -420,14 +423,16 @@ void VRenderer::CreateWindowSurface()
 
 void VRenderer::CreateGraphicsPipeline()
 {
-	// TODO separate this into several functions
+	// TODO make proper shader class
 
 	// generate Shader modules
 	const auto t_VertexShaderByteCode = ReadFile("../vRenderer/assets/shaders/compiled/vertex_shader.spv");
 	const auto t_FragmentShaderByteCode = ReadFile("../vRenderer/assets/shaders/compiled/fragment_shader.spv");
+	const auto t_ComputeShaderByteCode = ReadFile("../vRenderer/asssets/shaders/compiled/compute_shader.spv");
 
 	const VkShaderModule t_VertexShader = GenShaderModule(t_VertexShaderByteCode);
 	const VkShaderModule t_FragmentShader = GenShaderModule(t_FragmentShaderByteCode);
+	const VkShaderModule t_ComputeShader = GenShaderModule(t_ComputeShaderByteCode);
 
 	// generate vertex shader stage
 	VkPipelineShaderStageCreateInfo t_VertShaderStageInfo = {};
@@ -445,6 +450,13 @@ void VRenderer::CreateGraphicsPipeline()
 	t_FragShaderStageInfo.module = t_FragmentShader;
 	t_FragShaderStageInfo.pName = "main";
 
+	// generate compute shader stage
+	VkPipelineShaderStageCreateInfo t_ComputeShaderStageInfo = {};
+	t_ComputeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	t_ComputeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	// specify where the shader code is located and what the entry point is
+	t_ComputeShaderStageInfo.module = t_ComputeShader;
+	t_ComputeShaderStageInfo.pName = "main";
 
 	// store shader stage create infos
 	VkPipelineShaderStageCreateInfo t_ShaderStageCreateInfos[] = {t_VertShaderStageInfo, t_FragShaderStageInfo};
@@ -1056,4 +1068,33 @@ void VRenderer::HandleResize()
 	CreateColorResources();
 	CreateDepthResources();
 	CreateFrameBuffers();
+}
+
+/// <summary>	Generates the shader storage buffers used in the compute shader stage. </summary>
+void VRenderer::GenShaderStorageBuffers()
+{
+	// generate particles
+	int t_ParticleAmount = 8000;
+	glm::ivec2 WindowSize = GetWindowExtent();
+	std::vector<Particle> t_Particles = GenInitialParticles(t_ParticleAmount, WindowSize.x, WindowSize.y);
+
+	VkDeviceSize t_BufferSize = t_ParticleAmount * sizeof(Particle);
+
+	// staging buffer (CPU side) to hold particle data
+	Buffer t_StagingBuffer;
+	t_StagingBuffer.CreateBuffer(t_BufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_Device);
+	t_StagingBuffer.FillBuffer(t_BufferSize, m_Device.GetLogicalDevice(), t_Particles.data());
+
+	// for every in-flight frame, create a Shader Storage Buffer (GPU side)
+	// and copy the contents of the staging buffer into it
+	for (size_t i = 0; i < m_MaxInFlightFrames; i++)
+	{
+		m_ShaderStorageBuffers[i].CreateWithStagingBuffer(	t_StagingBuffer,
+															t_BufferSize,
+															m_Device, 
+															m_GraphicsQueue, 
+															m_CommandPool);
+	}
+
+	t_StagingBuffer.DestroyBuffer(m_Device.GetLogicalDevice());
 }

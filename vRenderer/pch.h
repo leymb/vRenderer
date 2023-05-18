@@ -21,6 +21,7 @@
 #include "vRenderer/camera/Camera.h"
 #include "vRenderer/helpers/helpers.h"
 #include "vRenderer/helper_structs/Mesh.h"
+#include "vRenderer/helper_structs/Particle.h"
 #include "vRenderer/helper_structs/RenderingHelpers.h"
 #include "vRenderer/helper_structs/Vertex.h"
 
