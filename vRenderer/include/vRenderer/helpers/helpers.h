@@ -36,8 +36,6 @@ static std::vector<char> ReadFile(const std::string& a_FilePath)
 // distributes particles on a circle
 std::vector<Particle>& GenInitialParticles(uint32_t a_NumParticles, float a_Height, float a_Width)
 {
-	float t_Pi = 3.14159265358979323846;
-
 	// generate particles
 	std::default_random_engine t_RandomEngine(static_cast<unsigned>(time(nullptr)));
 	std::uniform_real_distribution<float> t_RandomDistribution(0.0f, 1.0f);
@@ -46,6 +44,7 @@ std::vector<Particle>& GenInitialParticles(uint32_t a_NumParticles, float a_Heig
 	std::vector<Particle> t_Particles(a_NumParticles);
 	for (Particle t_Particle : t_Particles)
 	{
+		double t_Pi = 3.14159265358979323846;
 		float t_Random = 0.25f * sqrt(t_RandomDistribution(t_RandomEngine));
 		float t_Theta = t_RandomDistribution(t_RandomEngine) * 2 * t_Pi;
 		float t_X = t_Random * cos(t_Theta) * a_Height / a_Width;

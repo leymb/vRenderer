@@ -23,6 +23,8 @@
 
 #include "vRenderer/Buffer/ShaderStorageBuffer.h"
 
+int particle_amount = 8000;
+
 VRenderer::VRenderer(): m_Window(nullptr)
 {
 }
@@ -186,6 +188,7 @@ void VRenderer::InitVulkan()
 	m_SwapChain.CreateImageViews(m_Device.GetLogicalDevice());
 	CreateRenderPass();
 	m_DescriptorSetLayout = UniformBuffer::CreateDescriptorSetLayout(m_Device.GetLogicalDevice());
+	m_ComputeDescriptorLayout = ShaderStorageBuffer::CreateDescriptorSetLayout(m_Device.GetLogicalDevice());
 	CreateGraphicsPipeline();
 
 	CreateColorResources();
@@ -201,7 +204,7 @@ void VRenderer::InitVulkan()
 	m_IndexBuffer.CreateIndexBuffer(m_TestModel.GetMesh().m_Indices, m_Device, m_GraphicsQueue, m_CommandPool);
 
 
-	m_ParticleBuffer.CreateBuffer(t_ParticleBufferSize,
+	m_ParticleBuffer.CreateBuffer(sizeof(Particle) * particle_amount,
 	                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
 	                              VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_Device);
 
@@ -868,7 +871,7 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera)
 	float t_Delta = std::chrono::duration<float, std::chrono::seconds::period>(t_CurrTime - t_Start).count();
 
 	UniformBufferObject t_UBO = {};
-	m_TestModel.Rotate(t_Delta * 90.f * 0.2, glm::vec3(0.0f, 0.0f, 1.0f));
+	m_TestModel.Rotate(t_Delta * 90.f * 0.2f, glm::vec3(0.0f, 0.0f, 1.0f));
 	m_TestModel.SetPosition({0.f, 0.f, -0.5f});
 
 	t_UBO.m_Model = m_TestModel.GetModelMatrix();
@@ -884,20 +887,33 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera)
 VkDescriptorPool VRenderer::CreateDescriptorPool(const int a_DescriptorCount, const VkDevice& a_LogicalDevice)
 {
 	std::array<VkDescriptorPoolSize, 2> t_DescriptorPoolSizes = {};
-	// pool size for Uniform Buffer
+	//// pool size for Uniform Buffer
+	//t_DescriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	//t_DescriptorPoolSizes[0].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
+
+	//// pool size for CombinedImageSampler
+	//t_DescriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	//t_DescriptorPoolSizes[1].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
+
+	// pool size for uniform buffer used in compute
 	t_DescriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	t_DescriptorPoolSizes[0].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
 
-	// pool size for CombinedImageSampler
-	t_DescriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	t_DescriptorPoolSizes[1].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
+	// pool size for storage buffer used in compute
+	t_DescriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	t_DescriptorPoolSizes[1].descriptorCount = static_cast<uint32_t>(a_DescriptorCount) * 2;
 
 
 	VkDescriptorPoolCreateInfo t_DescriptorPoolCreateInfo = {};
-	t_DescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	/*t_DescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	t_DescriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(t_DescriptorPoolSizes.size());
 	t_DescriptorPoolCreateInfo.pPoolSizes = t_DescriptorPoolSizes.data();
-	t_DescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(a_DescriptorCount);
+	t_DescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(a_DescriptorCount);*/
+
+	t_DescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	t_DescriptorPoolCreateInfo.poolSizeCount = 2;
+	t_DescriptorPoolCreateInfo.pPoolSizes = t_DescriptorPoolSizes.data();
+	t_DescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(m_MaxInFlightFrames);
 
 	VkDescriptorPool t_DescriptorPool;
 
@@ -1074,11 +1090,10 @@ void VRenderer::HandleResize()
 void VRenderer::GenShaderStorageBuffers()
 {
 	// generate particles
-	int t_ParticleAmount = 8000;
 	glm::ivec2 WindowSize = GetWindowExtent();
-	std::vector<Particle> t_Particles = GenInitialParticles(t_ParticleAmount, WindowSize.x, WindowSize.y);
+	std::vector<Particle> t_Particles = GenInitialParticles(particle_amount, WindowSize.x, WindowSize.y);
 
-	VkDeviceSize t_BufferSize = t_ParticleAmount * sizeof(Particle);
+	VkDeviceSize t_BufferSize = particle_amount * sizeof(Particle);
 
 	// staging buffer (CPU side) to hold particle data
 	Buffer t_StagingBuffer;
@@ -1097,4 +1112,92 @@ void VRenderer::GenShaderStorageBuffers()
 	}
 
 	t_StagingBuffer.DestroyBuffer(m_Device.GetLogicalDevice());
+}
+
+void VRenderer::GenComputeDescriptorSets(int a_FramesInFlight, std::vector<UniformBuffer>& a_UniformBuffers)
+{
+	// allocate descriptor sets
+	std::vector<VkDescriptorSetLayout> t_DescriptorSetLayouts(a_FramesInFlight, m_ComputeDescriptorLayout);
+
+	VkDescriptorSetAllocateInfo t_AllocateInfo = {};
+	t_AllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	t_AllocateInfo.descriptorPool = m_DescriptorPool;
+	t_AllocateInfo.descriptorSetCount = static_cast<uint32_t>(m_MaxInFlightFrames);
+	t_AllocateInfo.pSetLayouts = t_DescriptorSetLayouts.data();
+
+	m_ComputeDescriptorSets.resize(m_MaxInFlightFrames);
+	if (vkAllocateDescriptorSets(m_Device.GetLogicalDevice(), &t_AllocateInfo, m_ComputeDescriptorSets.data()) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error: Could not allocate compute descriptor sets!");
+	}
+
+	// populate descriptor sets
+	for(size_t i = 0; i < a_FramesInFlight; i++)
+	{
+		VkDescriptorBufferInfo t_UniformBufferInfo = {};
+		t_UniformBufferInfo.buffer = a_UniformBuffers[i].GetBuffer();
+		t_UniformBufferInfo.offset = 0;
+		t_UniformBufferInfo.range = sizeof(UniformBufferObject);
+
+		std::array<VkWriteDescriptorSet, 3> t_WriteDescriptorSets = {};
+		t_WriteDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		t_WriteDescriptorSets[0].descriptorCount = 1;
+		t_WriteDescriptorSets[0].dstSet = m_ComputeDescriptorSets[i];
+		t_WriteDescriptorSets[0].dstBinding = 0;
+		t_WriteDescriptorSets[0].dstArrayElement = 0;
+		t_WriteDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		t_WriteDescriptorSets[0].pBufferInfo = &t_UniformBufferInfo;
+
+		VkDescriptorBufferInfo t_StorageBufferInfoLastFrame = {};
+		t_StorageBufferInfoLastFrame.buffer = m_ShaderStorageBuffers[(i - 1) % a_FramesInFlight].GetBuffer();
+		t_StorageBufferInfoLastFrame.offset = 0;
+		t_StorageBufferInfoLastFrame.range = sizeof(Particle) * particle_amount;
+
+		t_WriteDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		t_WriteDescriptorSets[1].dstSet = m_ComputeDescriptorSets[i];
+		t_WriteDescriptorSets[1].dstBinding = 1;
+		t_WriteDescriptorSets[1].dstArrayElement = 0;
+		t_WriteDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		t_WriteDescriptorSets[1].descriptorCount = 1;
+		t_WriteDescriptorSets[1].pBufferInfo = &t_StorageBufferInfoLastFrame;
+
+		VkDescriptorBufferInfo t_StorageBufferInfo = {};
+		t_StorageBufferInfoLastFrame.buffer = m_ShaderStorageBuffers[i].GetBuffer();
+		t_StorageBufferInfoLastFrame.offset = 0;
+		t_StorageBufferInfoLastFrame.range = sizeof(Particle) * particle_amount;
+
+		t_WriteDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		t_WriteDescriptorSets[2].dstSet = m_ComputeDescriptorSets[i];
+		t_WriteDescriptorSets[2].dstBinding = 2;
+		t_WriteDescriptorSets[2].dstArrayElement = 0;
+		t_WriteDescriptorSets[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		t_WriteDescriptorSets[2].descriptorCount = 1;
+		t_WriteDescriptorSets[2].pBufferInfo = &t_StorageBufferInfo;
+
+		vkUpdateDescriptorSets(m_Device.GetLogicalDevice(), 3, t_WriteDescriptorSets.data(), 0, nullptr);
+	}
+}
+
+void VRenderer::CreateComputePipeline()
+{
+	auto t_ComputeShaderCode = ReadFile("shaders/compute_particles.spv");
+
+	VkShaderModule t_ComputeShaderMod = GenShaderModule(t_ComputeShaderCode);
+
+	// Continue here
+
+	VkPipelineLayoutCreateInfo t_PipelineLayoutCreateInfo = {};
+	t_PipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	t_PipelineLayoutCreateInfo.setLayoutCount = 1;
+	t_PipelineLayoutCreateInfo.pSetLayouts = &m_ComputeDescriptorLayout;
+
+	if (vkCreatePipelineLayout(m_Device.GetLogicalDevice(), &t_PipelineLayoutCreateInfo, nullptr, &m_ComputePipelineLayout) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error: Could not create compute pipeline layout!");
+	}
+
+	VkComputePipelineCreateInfo t_ComputePipelineCreateInfo = {};
+	t_ComputePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	t_ComputePipelineCreateInfo.layout = m_ComputePipelineLayout;
+	t_ComputePipelineCreateInfo.stage = 
 }

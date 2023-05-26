@@ -16,6 +16,7 @@
 #include "vRenderer/vRenderer.h"
 #include "vRenderer/Buffer/Buffer.h"
 #include "vRenderer/Buffer/IndexBuffer.h"
+#include "vRenderer/Buffer/ShaderStorageBuffer.h"
 #include "vRenderer/Buffer/UniformBuffer.h"
 #include "vRenderer/Buffer/VertexBuffer.h"
 #include "vRenderer/camera/Camera.h"

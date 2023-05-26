@@ -9,7 +9,6 @@
 #include <vRenderer/SwapChain.h>
 
 #include "Model.h"
-#include "Texture.h"
 #include "Buffer/IndexBuffer.h"
 #include "Buffer/UniformBuffer.h"
 
@@ -103,6 +102,8 @@ private:
 
 	// Compute
 	void GenShaderStorageBuffers();
+	void GenComputeDescriptorSets(int a_FramesInFlight, std::vector<UniformBuffer>& a_UniformBuffers);
+	void CreateComputePipeline();
 
 	// GLFW members
 	GLFWwindow* m_Window;
@@ -122,12 +123,16 @@ private:
 
 	VkRenderPass m_MainRenderPass;
 	VkDescriptorSetLayout m_DescriptorSetLayout;
+	VkDescriptorSetLayout m_ComputeDescriptorLayout;
 	VkPipelineLayout m_PipelineLayout;
+	VkPipelineLayout m_ComputePipelineLayout;
 	VkPipeline m_GraphicsPipeline;
+	VkPipeline m_ComputePipeline;
 
 	std::vector<UniformBuffer> m_UniformBuffers{};
 	VkDescriptorPool m_DescriptorPool;
 	std::vector<VkDescriptorSet> m_DescriptorSets;
+	std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
 
 	std::vector<VkFramebuffer> m_Framebuffers;
 

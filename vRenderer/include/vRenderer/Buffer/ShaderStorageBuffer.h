@@ -33,6 +33,6 @@ public:
     void CreateWithStagingBuffer(const Buffer& a_StagingBuffer, VkDeviceSize a_BufferSize, const Device& a_Device, VkQueue a_GraphicsQueue,
                                  VkCommandPool a_CommandPool);
 
-    VkDescriptorSetLayout CreateDescriptorSetLayout(const VkDevice a_Device);
+    static VkDescriptorSetLayout CreateDescriptorSetLayout(const VkDevice a_Device);
 };
 
