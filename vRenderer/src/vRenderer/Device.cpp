@@ -167,8 +167,8 @@ VkSampleCountFlagBits Device::CheckMSAASampleCount(VkPhysicalDevice& a_PhysicalD
 //			!t_SwapChainInfo.m_SupportedSurfaceFormats.empty();
 //}
 
-void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsAndComputeQueue, VkQueue& a_PresentQueue, const std::vector<const char*>& a_RequestedDeviceExtensions,
-                                 const std::vector<const char*>& a_EnabledValidationLayers)
+void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsAndComputeQueue, VkQueue& a_PresentQueue, VkQueue& a_ComputeQueue,
+                                 const std::vector<const char*>& a_RequestedDeviceExtensions, const std::vector<const char*>& a_EnabledValidationLayers)
 {
 	if (m_PhysicalDevice == VK_NULL_HANDLE)
 	{
@@ -235,8 +235,11 @@ void Device::CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsAndC
 		throw std::runtime_error("Failed to create logical device!");
 	}
 
-	// create Graphics and Compute Queue, store the queue handles for later use
+	// create Graphics queue, store the queue handle for later use
 	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_GraphicsAndComputeFamily.value(), 0, &a_GraphicsAndComputeQueue);
+
+	// create Compute Queue, store the queue handles for later use
+	vkGetDeviceQueue(m_LogicalDevice,t_QueueFamilies.m_GraphicsAndComputeFamily.value(), 0, &a_ComputeQueue);
 
 	// create present queue, store the queue handle for later use
 	vkGetDeviceQueue(m_LogicalDevice, t_QueueFamilies.m_PresentFamily.value(), 0, &a_PresentQueue);

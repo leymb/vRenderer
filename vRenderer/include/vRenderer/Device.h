@@ -24,9 +24,8 @@ public:
 	/// <param name="a_RequestedDeviceExtensions">	The requested device extensions.</param>
 	/// <param name="a_EnabledValidationLayers">  	The enabled validation layers.</param>
 
-	void CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsAndComputeQueue, VkQueue& a_PresentQueue,
-	                         const std::vector<const char*>& a_RequestedDeviceExtensions,
-	                         const std::vector<const char*>& a_EnabledValidationLayers);
+	void CreateLogicalDevice(VkSurfaceKHR a_Surface, VkQueue& a_GraphicsAndComputeQueue, VkQueue& a_PresentQueue, VkQueue& a_ComputeQueue,
+                                 const std::vector<const char*>& a_RequestedDeviceExtensions, const std::vector<const char*>& a_EnabledValidationLayers);
 
 	VkPhysicalDevice GetPhysicalDevice() const;
 	VkDevice GetLogicalDevice() const;

@@ -81,7 +81,7 @@ private:
 	void RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_ImageIndex);
 
 	void CreateUniformBuffers();
-	void UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera);
+	void UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera, float a_Delta);
 
 	VkDescriptorPool CreateDescriptorPool(int a_DescriptorCount, const VkDevice& a_LogicalDevice);
 	void CreateDescriptorSets(int a_Count, VkDevice a_LogicalDevice, VkDescriptorSetLayout& a_DescriptorSetLayout,
@@ -104,6 +104,10 @@ private:
 	void GenShaderStorageBuffers();
 	void GenComputeDescriptorSets(int a_FramesInFlight, std::vector<UniformBuffer>& a_UniformBuffers);
 	void CreateComputePipeline();
+	void GenComputeCommandBuffers();
+	void RecordComputeCommandBuffer(VkCommandBuffer a_CommandBuffer);
+
+	static float GetDeltaTime();
 
 	// GLFW members
 	GLFWwindow* m_Window;
@@ -120,6 +124,7 @@ private:
 
 	VkQueue m_GraphicsQueue;
 	VkQueue m_PresentQueue;
+	VkQueue m_ComputeQueue;
 
 	VkRenderPass m_MainRenderPass;
 	VkDescriptorSetLayout m_DescriptorSetLayout;
@@ -130,6 +135,7 @@ private:
 	VkPipeline m_ComputePipeline;
 
 	std::vector<UniformBuffer> m_UniformBuffers{};
+	std::vector<UniformBuffer> m_ComputeUniformBuffers{};
 	VkDescriptorPool m_DescriptorPool;
 	std::vector<VkDescriptorSet> m_DescriptorSets;
 	std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
@@ -138,10 +144,13 @@ private:
 
 	VkCommandPool m_CommandPool;
 	std::vector<VkCommandBuffer> m_CommandBuffers;
+	std::vector<VkCommandBuffer> m_ComputeCommandBuffers;
 
 	std::vector<VkSemaphore> m_ImageAcquiredSemaphores;
 	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
+	std::vector<VkSemaphore> m_ComputeFinishedSemaphores;
 	std::vector<VkFence> m_InFlightFences;
+	std::vector<VkFence> m_ComputeInFlightFences;
 	uint32_t m_CurrentFrame = 0;
 
 	VertexBuffer m_VertexBuffer;

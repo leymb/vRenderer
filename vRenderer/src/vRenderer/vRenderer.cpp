@@ -68,6 +68,11 @@ bool VRenderer::Terminate()
 		m_UniformBuffers[i].DestroyBuffer(m_Device.GetLogicalDevice());
 	}
 
+	for(size_t i = 0; i < m_ComputeUniformBuffers.size(); i++)
+	{
+		m_ComputeUniformBuffers[i].DestroyBuffer(m_Device.GetLogicalDevice());
+	}
+
 	vkDestroyDescriptorPool(m_Device.GetLogicalDevice(), m_DescriptorPool, nullptr);
 
 	vkDestroyDescriptorSetLayout(m_Device.GetLogicalDevice(), m_DescriptorSetLayout, nullptr);
@@ -85,6 +90,32 @@ bool VRenderer::Terminate()
 void VRenderer::Render(Camera& a_Camera)
 {
 	glfwPollEvents();
+
+	// Compute Submission
+	vkWaitForFences(m_Device.GetLogicalDevice(), 1, &m_ComputeInFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
+
+	// update uniform buffer
+	float t_DeltaTime = GetDeltaTime();
+	m_ComputeUniformBuffers[m_CurrentFrame].FillBuffer(t_DeltaTime);
+
+	vkResetFences(m_Device.GetLogicalDevice(), 1, &m_ComputeInFlightFences[m_CurrentFrame]);
+
+	vkResetCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame], 0);
+	RecordComputeCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame]);
+
+	VkSubmitInfo t_ComputeSubmitInfo = {};
+	t_ComputeSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	t_ComputeSubmitInfo.commandBufferCount = 1;
+	t_ComputeSubmitInfo.pCommandBuffers = &m_ComputeCommandBuffers[m_CurrentFrame];
+	t_ComputeSubmitInfo.signalSemaphoreCount = 1;
+	t_ComputeSubmitInfo.pSignalSemaphores = &m_ComputeFinishedSemaphores[m_CurrentFrame];
+
+	if (vkQueueSubmit(m_ComputeQueue, 1, &t_ComputeSubmitInfo, m_ComputeInFlightFences[m_CurrentFrame]) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Could not submit Compute Command Buffer!");
+	}
+
+	// Graphics Submission
 
 	// wait for previous frame
 	vkWaitForFences(m_Device.GetLogicalDevice(), 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
@@ -109,7 +140,7 @@ void VRenderer::Render(Camera& a_Camera)
 	vkResetFences(m_Device.GetLogicalDevice(), 1, &m_InFlightFences[m_CurrentFrame]);
 
 	// update uniform buffers
-	UpdateUniformBuffers(m_CurrentFrame, a_Camera);
+	UpdateUniformBuffers(m_CurrentFrame, a_Camera, t_DeltaTime);
 
 	// record command buffer
 	vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
@@ -181,8 +212,8 @@ void VRenderer::InitVulkan()
 	CreateWindowSurface();
 
 	m_Device.ChoosePhysicalDevice(m_VInstance, m_WindowSurface, m_RequestedDeviceExtensions);
-	m_Device.CreateLogicalDevice(m_WindowSurface, m_GraphicsQueue, m_PresentQueue, m_RequestedDeviceExtensions,
-		m_EnabledValidationLayers);
+	m_Device.CreateLogicalDevice(m_WindowSurface, m_GraphicsQueue, m_PresentQueue, m_ComputeQueue,
+	                             m_RequestedDeviceExtensions, m_EnabledValidationLayers);
 
 	m_SwapChain.Create(m_Device, m_WindowSurface, m_Window);
 	m_SwapChain.CreateImageViews(m_Device.GetLogicalDevice());
@@ -212,8 +243,10 @@ void VRenderer::InitVulkan()
 	m_DescriptorPool = CreateDescriptorPool(m_MaxInFlightFrames, m_Device.GetLogicalDevice());
 	CreateDescriptorSets(m_MaxInFlightFrames, m_Device.GetLogicalDevice(), m_DescriptorSetLayout, m_DescriptorPool,
 	                     m_DescriptorSets);
+	GenComputeDescriptorSets(m_MaxInFlightFrames, m_ComputeUniformBuffers);
 	
 	CreateCommandBuffers();
+	GenComputeCommandBuffers();
 	CreateSyncObjects();
 }
 
@@ -852,26 +885,28 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 /// <summary>	Creates a uniform buffer for each in flight frame. </summary>
 void VRenderer::CreateUniformBuffers()
 {
+	// graphics uniform buffers
 	m_UniformBuffers.resize(m_MaxInFlightFrames);
 
 	for (size_t i = 0; i < m_MaxInFlightFrames; i++)
 	{
 		m_UniformBuffers[i].CreateUniformBuffer(m_Device);
 	}
+
+	// compute uniform buffers
+	m_ComputeUniformBuffers.resize(m_MaxInFlightFrames);
+	const VkDeviceSize t_BufferSize = sizeof(float);
+
+	for (size_t i = 0; i < m_MaxInFlightFrames; i++)
+	{
+		m_ComputeUniformBuffers[i].CreateUniformBuffer(m_Device, t_BufferSize);
+	}
 }
 
-void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera)
+void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera, float a_Delta)
 {
-
-	// TODO implement better
-	// delta time
-	static auto  t_Start = std::chrono::high_resolution_clock::now();
-
-	const auto t_CurrTime = std::chrono::high_resolution_clock::now();
-	float t_Delta = std::chrono::duration<float, std::chrono::seconds::period>(t_CurrTime - t_Start).count();
-
 	UniformBufferObject t_UBO = {};
-	m_TestModel.Rotate(t_Delta * 90.f * 0.2f, glm::vec3(0.0f, 0.0f, 1.0f));
+	m_TestModel.Rotate(a_Delta * 90.f * 0.2f, glm::vec3(0.0f, 0.0f, 1.0f));
 	m_TestModel.SetPosition({0.f, 0.f, -0.5f});
 
 	t_UBO.m_Model = m_TestModel.GetModelMatrix();
@@ -886,22 +921,22 @@ void VRenderer::UpdateUniformBuffers(uint32_t a_CurrentImage, Camera& a_Camera)
 
 VkDescriptorPool VRenderer::CreateDescriptorPool(const int a_DescriptorCount, const VkDevice& a_LogicalDevice)
 {
-	std::array<VkDescriptorPoolSize, 2> t_DescriptorPoolSizes = {};
+	std::array<VkDescriptorPoolSize, 3> t_DescriptorPoolSizes = {};
 	//// pool size for Uniform Buffer
 	//t_DescriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	//t_DescriptorPoolSizes[0].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
-
-	//// pool size for CombinedImageSampler
-	//t_DescriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	//t_DescriptorPoolSizes[1].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
 
 	// pool size for uniform buffer used in compute
 	t_DescriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	t_DescriptorPoolSizes[0].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
 
+	// pool size for CombinedImageSampler
+	t_DescriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	t_DescriptorPoolSizes[1].descriptorCount = static_cast<uint32_t>(a_DescriptorCount);
+
 	// pool size for storage buffer used in compute
-	t_DescriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	t_DescriptorPoolSizes[1].descriptorCount = static_cast<uint32_t>(a_DescriptorCount) * 2;
+	t_DescriptorPoolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	t_DescriptorPoolSizes[2].descriptorCount = static_cast<uint32_t>(a_DescriptorCount) * 2;
 
 
 	VkDescriptorPoolCreateInfo t_DescriptorPoolCreateInfo = {};
@@ -911,7 +946,7 @@ VkDescriptorPool VRenderer::CreateDescriptorPool(const int a_DescriptorCount, co
 	t_DescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(a_DescriptorCount);*/
 
 	t_DescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	t_DescriptorPoolCreateInfo.poolSizeCount = 2;
+	t_DescriptorPoolCreateInfo.poolSizeCount = 3;
 	t_DescriptorPoolCreateInfo.pPoolSizes = t_DescriptorPoolSizes.data();
 	t_DescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(m_MaxInFlightFrames);
 
@@ -991,6 +1026,8 @@ void VRenderer::CreateSyncObjects()
 	//resize semaphore & fence vectors
 	m_ImageAcquiredSemaphores.resize(m_MaxInFlightFrames);
 	m_RenderFinishedSemaphores.resize(m_MaxInFlightFrames);
+	m_ComputeFinishedSemaphores.resize(m_MaxInFlightFrames);
+	m_InFlightFences.resize(m_MaxInFlightFrames);
 	m_InFlightFences.resize(m_MaxInFlightFrames);
 
 
@@ -1005,17 +1042,30 @@ void VRenderer::CreateSyncObjects()
 	// for each frame in flight
 	for (int i = 0; i < m_MaxInFlightFrames; i++)
 	{
-		// create Semaphores
+		// create Semaphores for graphics
 		if (vkCreateSemaphore(m_Device.GetLogicalDevice(), &t_SemaphoreCreateInfo, nullptr, &m_ImageAcquiredSemaphores[i]) != VK_SUCCESS ||
-			vkCreateSemaphore(m_Device.GetLogicalDevice(), &t_SemaphoreCreateInfo, nullptr, &m_RenderFinishedSemaphores[i]) != VK_SUCCESS)
+			vkCreateSemaphore(m_Device.GetLogicalDevice(), &t_SemaphoreCreateInfo, nullptr, &m_RenderFinishedSemaphores[i]) != VK_SUCCESS
+			)
 		{
-			throw std::runtime_error("Could not create Semaphores!");
+			throw std::runtime_error("Could not create Semaphores for graphics pipelines!");
 		}
 
-		// create Fence
+		// create Fences for graphics
 		if (vkCreateFence(m_Device.GetLogicalDevice(), &t_FenceCreateInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS)
 		{
-			throw std::runtime_error("Could not create Fence!");
+			throw std::runtime_error("Could not create Fence for graphics pipeline!");
+		}
+
+		// create Semaphores for compute
+		if (vkCreateSemaphore(m_Device.GetLogicalDevice(), &t_SemaphoreCreateInfo, nullptr, &m_ComputeFinishedSemaphores[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Error! Could not create Semaphore for compute pipeline!");
+		}
+
+		// create Fence for compute
+		if (vkCreateFence(m_Device.GetLogicalDevice(), &t_FenceCreateInfo, nullptr, &m_ComputeInFlightFences[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Error! Could not create Fence for compute pipeline!");
 		}
 	}
 }
@@ -1184,7 +1234,12 @@ void VRenderer::CreateComputePipeline()
 
 	VkShaderModule t_ComputeShaderMod = GenShaderModule(t_ComputeShaderCode);
 
-	// Continue here
+	// create ComputeShaderStage
+	VkPipelineShaderStageCreateInfo t_ComputeShaderStageCreateInfo{};
+	t_ComputeShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	t_ComputeShaderStageCreateInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	t_ComputeShaderStageCreateInfo.module = t_ComputeShaderMod;
+	t_ComputeShaderStageCreateInfo.pName = "main";
 
 	VkPipelineLayoutCreateInfo t_PipelineLayoutCreateInfo = {};
 	t_PipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1196,8 +1251,75 @@ void VRenderer::CreateComputePipeline()
 		throw std::runtime_error("Error: Could not create compute pipeline layout!");
 	}
 
+	// create Compute Pipeline
 	VkComputePipelineCreateInfo t_ComputePipelineCreateInfo = {};
 	t_ComputePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 	t_ComputePipelineCreateInfo.layout = m_ComputePipelineLayout;
-	t_ComputePipelineCreateInfo.stage = 
+	t_ComputePipelineCreateInfo.stage = t_ComputeShaderStageCreateInfo;
+
+	if (vkCreateComputePipelines(m_Device.GetLogicalDevice(), VK_NULL_HANDLE, 1, &t_ComputePipelineCreateInfo, nullptr,
+	                             &m_ComputePipeline) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Could not create compute pipeline.");
+	}
+
+	// Destroy Shader Module
+	vkDestroyShaderModule(m_Device.GetLogicalDevice(), t_ComputeShaderMod, nullptr);
+}
+
+/// <summary>	Generates the compute command buffers. </summary>
+void VRenderer::GenComputeCommandBuffers()
+{
+	m_ComputeCommandBuffers.resize(m_MaxInFlightFrames);
+
+	VkCommandBufferAllocateInfo t_CommandBufferAllocateInfo = {};
+	t_CommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	t_CommandBufferAllocateInfo.commandPool = m_CommandPool;
+	t_CommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	t_CommandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(m_ComputeCommandBuffers.size());
+
+	if (vkAllocateCommandBuffers(m_Device.GetLogicalDevice(), &t_CommandBufferAllocateInfo,
+	                             m_ComputeCommandBuffers.data()) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Failed to allocate Compute Command Buffers!");
+	}
+}
+
+/// <summary>
+/// 	Records the compute command buffer. Mostly serves to record the command dispatch. Taken
+/// 	from https://github.com/Overv/VulkanTutorial/blob/main/code/31_compute_shader.cpp.
+/// </summary>
+
+void VRenderer::RecordComputeCommandBuffer(VkCommandBuffer a_CommandBuffer)
+{
+	// begin recording command buffer
+	VkCommandBufferBeginInfo t_BeginInfo = {};
+	t_BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	if (vkBeginCommandBuffer(a_CommandBuffer, &t_BeginInfo) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Could not begin recording Compute Command Buffer!");
+	}
+
+	// bind pipeline & descriptor sets
+	vkCmdBindPipeline(a_CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline);
+	vkCmdBindDescriptorSets(a_CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipelineLayout, 0, 1,
+	                        &m_ComputeDescriptorSets[m_CurrentFrame], 0, nullptr);
+
+	// Dispatch Compute Command
+	vkCmdDispatch(a_CommandBuffer, particle_amount / 256, 1, 1);
+
+	// end recording command buffer
+	if (vkEndCommandBuffer(a_CommandBuffer) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Error! Could not finish recording Compute Command Buffer!");
+	}
+}
+
+float VRenderer::GetDeltaTime()
+{
+	static auto  t_Start = std::chrono::high_resolution_clock::now();
+
+	const auto t_CurrTime = std::chrono::high_resolution_clock::now();
+	return std::chrono::duration<float, std::chrono::seconds::period>(t_CurrTime - t_Start).count();
 }

@@ -23,6 +23,15 @@ void UniformBuffer::CreateUniformBuffer(const Device& a_Device)
 	vkMapMemory(a_Device.GetLogicalDevice(), m_Memory, 0, t_BufferSize, 0, &m_AccessPointer);
 }
 
+void UniformBuffer::CreateUniformBuffer(const Device& a_Device, VkDeviceSize a_BufferSize)
+{
+	CreateBuffer(a_BufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, a_Device);
+
+	// persistent mapping (get a pointer to write data to later)
+	vkMapMemory(a_Device.GetLogicalDevice(), m_Memory, 0, a_BufferSize, 0, &m_AccessPointer);
+}
+
 VkDescriptorSetLayout UniformBuffer::CreateDescriptorSetLayout(const VkDevice a_Device)
 {
 	VkDescriptorSetLayout t_DescriptorSetLayout;
