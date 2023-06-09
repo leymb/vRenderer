@@ -1306,7 +1306,7 @@ void VRenderer::RecordComputeCommandBuffer(VkCommandBuffer a_CommandBuffer)
 	                        &m_ComputeDescriptorSets[m_CurrentFrame], 0, nullptr);
 
 	// Dispatch Compute Command
-	vkCmdDispatch(a_CommandBuffer, particle_amount / 256, 1, 1);
+	vkCmdDispatch(a_CommandBuffer, std::ceil(particle_amount / 256.f), 1, 1);
 
 	// end recording command buffer
 	if (vkEndCommandBuffer(a_CommandBuffer) != VK_SUCCESS)
