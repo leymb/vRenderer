@@ -34,7 +34,7 @@ static std::vector<char> ReadFile(const std::string& a_FilePath)
 
 // taken from https://vulkan-tutorial.com/Compute_Shader#page_Compute-queue-families
 // distributes particles on a circle
-std::vector<Particle>& GenInitialParticles(uint32_t a_NumParticles, float a_Height, float a_Width)
+std::vector<Particle> GenInitialParticles(uint32_t a_NumParticles, float a_Height, float a_Width)
 {
 	// generate particles
 	std::default_random_engine t_RandomEngine(static_cast<unsigned>(time(nullptr)));
@@ -42,7 +42,7 @@ std::vector<Particle>& GenInitialParticles(uint32_t a_NumParticles, float a_Heig
 
 	// set initial particle positions
 	std::vector<Particle> t_Particles(a_NumParticles);
-	for (Particle t_Particle : t_Particles)
+	for (Particle& t_Particle : t_Particles)
 	{
 		double t_Pi = 3.14159265358979323846;
 		float t_Random = 0.25f * sqrt(t_RandomDistribution(t_RandomEngine));

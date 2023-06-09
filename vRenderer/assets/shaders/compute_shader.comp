@@ -10,16 +10,16 @@ struct Particle {
     vec2 pos;
     vec2 vel;
     vec4 color;
-}
+};
 
 // define Shader Storage Buffer for both write and read
 layout(std140, binding = 1) readonly buffer InputParticleSSBO {
     Particle inParticles[ ];
-}
+};
 
 layout(std140, binding = 2) buffer OutputParticleSSBO {
     Particle outParticles[ ];
-}
+};
 
 // define number of invocations
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;

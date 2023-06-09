@@ -11,6 +11,7 @@
 #include "Model.h"
 #include "Buffer/IndexBuffer.h"
 #include "Buffer/UniformBuffer.h"
+#include "Buffer/ShaderStorageBuffer.h"
 
 class ShaderStorageBuffer;
 class Camera;

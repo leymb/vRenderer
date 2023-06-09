@@ -1,8 +1,8 @@
 #pragma once
-#include "vulkan/vulkan_core.h"
-
 #include <vector>
+#include <vulkan/vulkan_core.h>
 
+#include "vRenderer/helper_structs/RenderingHelpers.h"
 #include "vRenderer/helper_structs/Vertex.h"
 
 inline VkPipelineDynamicStateCreateInfo GenDynamicStateCreateInfo(const std::vector<VkDynamicState>& a_DynamicStates)
@@ -17,7 +17,7 @@ inline VkPipelineDynamicStateCreateInfo GenDynamicStateCreateInfo(const std::vec
 }
 
 inline VkPipelineVertexInputStateCreateInfo GenVertexInputStateCreateInfo(
-	VkVertexInputBindingDescription& a_BindingDesc, std::array<VkVertexInputAttributeDescription, 3>& a_AttributeDesc)
+	VkVertexInputBindingDescription& a_BindingDesc, std::array<VkVertexInputAttributeDescription, 2>& a_AttributeDesc)
 {
 	VkPipelineVertexInputStateCreateInfo t_VertexInputStateCreateInfo = {};
 	t_VertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -35,7 +35,7 @@ inline VkPipelineInputAssemblyStateCreateInfo GenInputAssemblyStateCreateInfo()
 {
 	VkPipelineInputAssemblyStateCreateInfo t_InputAssemblyStateCreateInfo = {};
 	t_InputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	t_InputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	t_InputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	t_InputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
 
 	return t_InputAssemblyStateCreateInfo;
@@ -90,9 +90,9 @@ inline VkPipelineRasterizationStateCreateInfo GenRasterizationStateCreateInfo()
 	t_RasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
 	t_RasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
-	t_RasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
+	/*t_RasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
 	t_RasterizationStateCreateInfo.depthBiasClamp = 0.0f;
-	t_RasterizationStateCreateInfo.depthBiasSlopeFactor = 0.0f;
+	t_RasterizationStateCreateInfo.depthBiasSlopeFactor = 0.0f;*/
 
 	return t_RasterizationStateCreateInfo;
 }
@@ -102,12 +102,12 @@ inline VkPipelineMultisampleStateCreateInfo GenMultisamplingStateCreateInfo(VkSa
 	VkPipelineMultisampleStateCreateInfo t_MultisampleState = {};
 
 	t_MultisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	t_MultisampleState.sampleShadingEnable = VK_TRUE;
-	t_MultisampleState.rasterizationSamples = a_MSAASampleCount;
-	t_MultisampleState.minSampleShading = 0.2f;
+	t_MultisampleState.sampleShadingEnable = VK_FALSE;
+	t_MultisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	/*t_MultisampleState.minSampleShading = 0.2f;
 	t_MultisampleState.pSampleMask = nullptr;
 	t_MultisampleState.alphaToCoverageEnable = VK_FALSE;
-	t_MultisampleState.alphaToOneEnable = VK_FALSE;
+	t_MultisampleState.alphaToOneEnable = VK_FALSE;*/
 
 	return t_MultisampleState;
 }
@@ -117,11 +117,11 @@ inline VkPipelineColorBlendAttachmentState GenColorBlendAttachStateCreateInfo()
 	VkPipelineColorBlendAttachmentState t_ColorBlend = {};
 	t_ColorBlend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
 		VK_COLOR_COMPONENT_A_BIT;
-	t_ColorBlend.blendEnable = VK_FALSE;
-	t_ColorBlend.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	t_ColorBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	t_ColorBlend.blendEnable = VK_TRUE;
+	t_ColorBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	t_ColorBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	t_ColorBlend.colorBlendOp = VK_BLEND_OP_ADD;
-	t_ColorBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	t_ColorBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	t_ColorBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	t_ColorBlend.alphaBlendOp = VK_BLEND_OP_ADD;
 
@@ -152,8 +152,8 @@ inline VkPipelineLayoutCreateInfo GenPipelineCreateInfo(const int a_LayoutCount,
 	t_PipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	t_PipelineLayoutCreateInfo.setLayoutCount = a_LayoutCount;
 	t_PipelineLayoutCreateInfo.pSetLayouts = a_Layout;
-	t_PipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-	t_PipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+	/*t_PipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+	t_PipelineLayoutCreateInfo.pPushConstantRanges = nullptr;*/
 
 	return t_PipelineLayoutCreateInfo;
 }

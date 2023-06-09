@@ -20,7 +20,6 @@
 #include "vRenderer/Buffer/UniformBuffer.h"
 #include "vRenderer/Buffer/VertexBuffer.h"
 #include "vRenderer/camera/Camera.h"
-#include "vRenderer/helpers/helpers.h"
 #include "vRenderer/helper_structs/Mesh.h"
 #include "vRenderer/helper_structs/Particle.h"
 #include "vRenderer/helper_structs/RenderingHelpers.h"

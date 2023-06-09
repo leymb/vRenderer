@@ -96,7 +96,8 @@ void VRenderer::Render(Camera& a_Camera)
 
 	// update uniform buffer
 	float t_DeltaTime = GetDeltaTime();
-	m_ComputeUniformBuffers[m_CurrentFrame].FillBuffer(t_DeltaTime);
+	ComputeUBO t_ComputeUBO = {t_DeltaTime};
+	m_ComputeUniformBuffers[m_CurrentFrame].FillBuffer(t_ComputeUBO);
 
 	vkResetFences(m_Device.GetLogicalDevice(), 1, &m_ComputeInFlightFences[m_CurrentFrame]);
 
@@ -218,31 +219,34 @@ void VRenderer::InitVulkan()
 	m_SwapChain.Create(m_Device, m_WindowSurface, m_Window);
 	m_SwapChain.CreateImageViews(m_Device.GetLogicalDevice());
 	CreateRenderPass();
-	m_DescriptorSetLayout = UniformBuffer::CreateDescriptorSetLayout(m_Device.GetLogicalDevice());
+	// m_DescriptorSetLayout = UniformBuffer::CreateDescriptorSetLayout(m_Device.GetLogicalDevice());
 	m_ComputeDescriptorLayout = ShaderStorageBuffer::CreateDescriptorSetLayout(m_Device.GetLogicalDevice());
 	CreateGraphicsPipeline();
+	CreateComputePipeline();
 
-	CreateColorResources();
-	CreateDepthResources();
+	// CreateColorResources();
+	// CreateDepthResources();
 	CreateFrameBuffers();
 
 	CreateCommandPool();
 
-	m_TestModel.Load("../vRenderer/assets/models/pokeball.obj", "../vRenderer/assets/textures/pokeball.jpg",
-		m_Device, m_CommandPool, m_GraphicsQueue);
+	/*m_TestModel.Load("../vRenderer/assets/models/pokeball.obj", "../vRenderer/assets/textures/pokeball.jpg",
+		m_Device, m_CommandPool, m_GraphicsQueue);*/
 
-	m_VertexBuffer.CreateVertexBuffer(m_TestModel.GetMesh().m_Vertices, m_Device, m_GraphicsQueue, m_CommandPool);
-	m_IndexBuffer.CreateIndexBuffer(m_TestModel.GetMesh().m_Indices, m_Device, m_GraphicsQueue, m_CommandPool);
+	/*m_VertexBuffer.CreateVertexBuffer(m_TestModel.GetMesh().m_Vertices, m_Device, m_GraphicsQueue, m_CommandPool);
+	m_IndexBuffer.CreateIndexBuffer(m_TestModel.GetMesh().m_Indices, m_Device, m_GraphicsQueue, m_CommandPool);*/
+
+	GenShaderStorageBuffers();
 
 
-	m_ParticleBuffer.CreateBuffer(sizeof(Particle) * particle_amount,
+	/*m_ParticleBuffer.CreateBuffer(sizeof(Particle) * particle_amount,
 	                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-	                              VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_Device);
+	                              VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_Device);*/
 
 	CreateUniformBuffers();
 	m_DescriptorPool = CreateDescriptorPool(m_MaxInFlightFrames, m_Device.GetLogicalDevice());
-	CreateDescriptorSets(m_MaxInFlightFrames, m_Device.GetLogicalDevice(), m_DescriptorSetLayout, m_DescriptorPool,
-	                     m_DescriptorSets);
+	/*CreateDescriptorSets(m_MaxInFlightFrames, m_Device.GetLogicalDevice(), m_DescriptorSetLayout, m_DescriptorPool,
+	                     m_DescriptorSets);*/
 	GenComputeDescriptorSets(m_MaxInFlightFrames, m_ComputeUniformBuffers);
 	
 	CreateCommandBuffers();
@@ -462,13 +466,11 @@ void VRenderer::CreateGraphicsPipeline()
 	// TODO make proper shader class
 
 	// generate Shader modules
-	const auto t_VertexShaderByteCode = ReadFile("../vRenderer/assets/shaders/compiled/vertex_shader.spv");
-	const auto t_FragmentShaderByteCode = ReadFile("../vRenderer/assets/shaders/compiled/fragment_shader.spv");
-	const auto t_ComputeShaderByteCode = ReadFile("../vRenderer/asssets/shaders/compiled/compute_shader.spv");
+	const auto t_VertexShaderByteCode = ReadFile("../vRenderer/assets/shaders/compiled/compute_shader_vert.spv");
+	const auto t_FragmentShaderByteCode = ReadFile("../vRenderer/assets/shaders/compiled/compute_shader_frag.spv");
 
 	const VkShaderModule t_VertexShader = GenShaderModule(t_VertexShaderByteCode);
 	const VkShaderModule t_FragmentShader = GenShaderModule(t_FragmentShaderByteCode);
-	const VkShaderModule t_ComputeShader = GenShaderModule(t_ComputeShaderByteCode);
 
 	// generate vertex shader stage
 	VkPipelineShaderStageCreateInfo t_VertShaderStageInfo = {};
@@ -486,14 +488,6 @@ void VRenderer::CreateGraphicsPipeline()
 	t_FragShaderStageInfo.module = t_FragmentShader;
 	t_FragShaderStageInfo.pName = "main";
 
-	// generate compute shader stage
-	VkPipelineShaderStageCreateInfo t_ComputeShaderStageInfo = {};
-	t_ComputeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	t_ComputeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-	// specify where the shader code is located and what the entry point is
-	t_ComputeShaderStageInfo.module = t_ComputeShader;
-	t_ComputeShaderStageInfo.pName = "main";
-
 	// store shader stage create infos
 	VkPipelineShaderStageCreateInfo t_ShaderStageCreateInfos[] = {t_VertShaderStageInfo, t_FragShaderStageInfo};
 
@@ -506,8 +500,8 @@ void VRenderer::CreateGraphicsPipeline()
 	VkPipelineDynamicStateCreateInfo t_DynamicStateCreateInfo = GenDynamicStateCreateInfo(t_DynStates);
 
 	// create VertexInputStateCreateInfo
-	VkVertexInputBindingDescription t_BindingDesc = Vertex::GenInputBindingDesc();
-	std::array<VkVertexInputAttributeDescription, 3> t_AttributeDesc = Vertex::GenInputAttributeDesc();
+	VkVertexInputBindingDescription t_BindingDesc = Particle::GenBindingDescription();
+	std::array<VkVertexInputAttributeDescription, 2> t_AttributeDesc = Particle::GenAttributeDescriptions();
 	VkPipelineVertexInputStateCreateInfo t_VertexInputStateCreateInfo = GenVertexInputStateCreateInfo(t_BindingDesc, t_AttributeDesc);
 
 	// generate Input Assembly stage
@@ -539,7 +533,7 @@ void VRenderer::CreateGraphicsPipeline()
 
 
 	// generate Pipeline Layout
-	VkPipelineLayoutCreateInfo t_PipelineLayoutCreateInfo = GenPipelineCreateInfo(1, &m_DescriptorSetLayout);
+	VkPipelineLayoutCreateInfo t_PipelineLayoutCreateInfo = GenPipelineCreateInfo(0, nullptr);
 
 	if (vkCreatePipelineLayout(m_Device.GetLogicalDevice(), &t_PipelineLayoutCreateInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
 	{
@@ -547,7 +541,7 @@ void VRenderer::CreateGraphicsPipeline()
 	}
 
 	// Depth Stencil
-	VkPipelineDepthStencilStateCreateInfo t_DepthStencilCreateInfo = {};
+	/*VkPipelineDepthStencilStateCreateInfo t_DepthStencilCreateInfo = {};
 	t_DepthStencilCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	t_DepthStencilCreateInfo.depthTestEnable = VK_TRUE;
 	t_DepthStencilCreateInfo.depthWriteEnable = VK_TRUE;
@@ -557,7 +551,7 @@ void VRenderer::CreateGraphicsPipeline()
 	t_DepthStencilCreateInfo.maxDepthBounds = 1.0f;
 	t_DepthStencilCreateInfo.stencilTestEnable = VK_FALSE;
 	t_DepthStencilCreateInfo.front = {};
-	t_DepthStencilCreateInfo.back = {};
+	t_DepthStencilCreateInfo.back = {};*/
 
 
 	// make Graphics Pipeline
@@ -572,7 +566,7 @@ void VRenderer::CreateGraphicsPipeline()
 	t_PipelineCreateInfo.pViewportState = &t_ViewportState;
 	t_PipelineCreateInfo.pRasterizationState = &t_RasterizationStateCreateInfo;
 	t_PipelineCreateInfo.pMultisampleState = &t_MultisampleState;
-	t_PipelineCreateInfo.pDepthStencilState = &t_DepthStencilCreateInfo;
+	// t_PipelineCreateInfo.pDepthStencilState = &t_DepthStencilCreateInfo;
 	t_PipelineCreateInfo.pColorBlendState = &t_ColorBlendStateCreateInfo;
 	t_PipelineCreateInfo.pDynamicState = &t_DynamicStateCreateInfo;
 
@@ -584,9 +578,9 @@ void VRenderer::CreateGraphicsPipeline()
 	t_PipelineCreateInfo.subpass = 0;
 
 	t_PipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-	t_PipelineCreateInfo.basePipelineIndex = -1;
+	// t_PipelineCreateInfo.basePipelineIndex = -1;
 
-	if (vkCreateGraphicsPipelines(m_Device.GetLogicalDevice(), VK_NULL_HANDLE, 1, &t_PipelineCreateInfo, nullptr, &m_GraphicsPipeline) 
+	if (vkCreateGraphicsPipelines(m_Device.GetLogicalDevice(), VK_NULL_HANDLE, 1, &t_PipelineCreateInfo, nullptr, &m_GraphicsPipeline)
 		!= VK_SUCCESS)
 	{
 		throw std::runtime_error("Unable to create Graphics Pipeline!");
@@ -629,7 +623,7 @@ void VRenderer::CreateRenderPass()
 	t_ColorAttachement.format = m_SwapChain.GetFormat();
 
 	// set to maximum physical device-supported MSAA samples
-	t_ColorAttachement.samples = m_Device.GetMSAASampleCount();
+	t_ColorAttachement.samples = VK_SAMPLE_COUNT_1_BIT;
 
 	// clear the framebuffer before drawing a new frame
 	t_ColorAttachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -642,11 +636,11 @@ void VRenderer::CreateRenderPass()
 
 	// specify the layout of the image before and after the render pass finishes
 	t_ColorAttachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	t_ColorAttachement.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	t_ColorAttachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 
 	// Depth Buffer Attachment
-	VkAttachmentDescription t_DepthAttachment = {};
+	/*VkAttachmentDescription t_DepthAttachment = {};
 	t_DepthAttachment.format = FindDepthFormat(m_Device.GetPhysicalDevice());
 	t_DepthAttachment.samples = m_Device.GetMSAASampleCount();
 	t_DepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -654,10 +648,10 @@ void VRenderer::CreateRenderPass()
 	t_DepthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	t_DepthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	t_DepthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	t_DepthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	t_DepthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;*/
 
 	// resolve attachment
-	VkAttachmentDescription t_ColorResolveAttachment = {};
+	/*VkAttachmentDescription t_ColorResolveAttachment = {};
 	t_ColorResolveAttachment.format = m_SwapChain.GetFormat();
 	t_ColorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	t_ColorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -665,20 +659,20 @@ void VRenderer::CreateRenderPass()
 	t_ColorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	t_ColorResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	t_ColorResolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	t_ColorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	t_ColorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;*/
 
 	// attachment references
 	VkAttachmentReference t_ColorAttachmentReference;
 	t_ColorAttachmentReference.attachment = 0;
 	t_ColorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference t_DepthAttachmentReference;
+	/*VkAttachmentReference t_DepthAttachmentReference;
 	t_DepthAttachmentReference.attachment = 1;
-	t_DepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	t_DepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;*/
 
-	VkAttachmentReference t_ColorResolveAttachmentReference;
+	/*VkAttachmentReference t_ColorResolveAttachmentReference;
 	t_ColorResolveAttachmentReference.attachment = 2;
-	t_ColorResolveAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	t_ColorResolveAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;*/
 
 
 	// sub-passes
@@ -689,21 +683,21 @@ void VRenderer::CreateRenderPass()
 
 	t_SubpassDescription.colorAttachmentCount = 1;
 	t_SubpassDescription.pColorAttachments = &t_ColorAttachmentReference;
-	t_SubpassDescription.pDepthStencilAttachment = &t_DepthAttachmentReference;
-	t_SubpassDescription.pResolveAttachments = &t_ColorResolveAttachmentReference;
+	//t_SubpassDescription.pDepthStencilAttachment = &t_DepthAttachmentReference;
+	//t_SubpassDescription.pResolveAttachments = &t_ColorResolveAttachmentReference;
 
 	// handle sub-pass dependencies
 	VkSubpassDependency t_SubpassDependency = {};
 	t_SubpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	t_SubpassDependency.dstSubpass = 0;
-	t_SubpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	t_SubpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	t_SubpassDependency.srcAccessMask = 0;
-	t_SubpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	t_SubpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	t_SubpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	t_SubpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	// create render pass
-	std::array<VkAttachmentDescription, 3> t_AttachmentDescriptions = {
-		t_ColorAttachement, t_DepthAttachment, t_ColorResolveAttachment
+	std::array<VkAttachmentDescription, 1> t_AttachmentDescriptions = {
+		t_ColorAttachement
 	};
 
 	VkRenderPassCreateInfo t_RenderPassCreateInfo = {};
@@ -732,10 +726,8 @@ void VRenderer::CreateFrameBuffers()
 	// iterate over the SwapChainImageViews vector and create a frame buffer per image
 	for (size_t i = 0; i < t_SwapChainImageViews.size(); i++)
 	{
-		const std::array<VkImageView, 3> t_Attachments = 
+		const std::array<VkImageView, 1> t_Attachments = 
 		{
-			m_ColorImage.GetImageView(),
-			m_DepthImage.GetImageView(),
 			t_SwapChainImageViews[i]
 		};
 
@@ -802,8 +794,8 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	VkCommandBufferBeginInfo t_CommandBufferBeginInfo = {};
 
 	t_CommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	t_CommandBufferBeginInfo.flags = 0;
-	t_CommandBufferBeginInfo.pInheritanceInfo = nullptr;
+	/*t_CommandBufferBeginInfo.flags = 0;
+	t_CommandBufferBeginInfo.pInheritanceInfo = nullptr;*/
 
 	if (vkBeginCommandBuffer(m_CommandBuffers[m_CurrentFrame], &t_CommandBufferBeginInfo) != VK_SUCCESS)
 	{
@@ -820,13 +812,14 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	t_RenderPassBeginInfo.renderArea.extent = m_SwapChain.GetExtent();
 
 	// clear values
-	std::array<VkClearValue, 3> t_ClearValues = {};
+	/*std::array<VkClearValue, 3> t_ClearValues = {};
 	t_ClearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
 	t_ClearValues[1].depthStencil = { 1.0f, 0 };
-	t_ClearValues[2].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+	t_ClearValues[2].color = {{0.0f, 0.0f, 0.0f, 1.0f}};*/
+	VkClearValue t_ClearValue = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
 
-	t_RenderPassBeginInfo.clearValueCount = static_cast<uint32_t>(t_ClearValues.size());
-	t_RenderPassBeginInfo.pClearValues = t_ClearValues.data();
+	t_RenderPassBeginInfo.clearValueCount = 1;
+	t_RenderPassBeginInfo.pClearValues = &t_ClearValue;
 
 	// begin render pass
 	vkCmdBeginRenderPass(m_CommandBuffers[m_CurrentFrame], &t_RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -835,18 +828,18 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 	vkCmdBindPipeline(m_CommandBuffers[m_CurrentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
 
 	// Bind Vertex VertexBuffer
-	const VkBuffer t_VertexBuffers[] = {m_VertexBuffer.GetBuffer()};
+	/*const VkBuffer t_VertexBuffers[] = {m_VertexBuffer.GetBuffer()};
 	const VkDeviceSize t_Offsets[] = {0};
-	vkCmdBindVertexBuffers(m_CommandBuffers[m_CurrentFrame], 0, 1, t_VertexBuffers, t_Offsets);
+	vkCmdBindVertexBuffers(m_CommandBuffers[m_CurrentFrame], 0, 1, t_VertexBuffers, t_Offsets);*/
 
 	// Bind Index Buffer
-	vkCmdBindIndexBuffer(m_CommandBuffers[m_CurrentFrame], m_IndexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+	// vkCmdBindIndexBuffer(m_CommandBuffers[m_CurrentFrame], m_IndexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 	const VkExtent2D t_SwapChainExtent = m_SwapChain.GetExtent();
 
 	// TODO store this somewhere for reuse
 	// Set Viewport
-	VkViewport t_Viewport = {};
+	VkViewport t_Viewport;
 	t_Viewport.x = 0.0f;
 	t_Viewport.y = 0.0f;
 	t_Viewport.width = static_cast<float>(t_SwapChainExtent.width);
@@ -858,19 +851,22 @@ void VRenderer::RecordCommandBuffer(VkCommandBuffer a_CommandBuffer, uint32_t a_
 
 	// TODO store this somewhere for reuse
 	// Set Scissors
-	VkRect2D t_Scissor = {};
+	VkRect2D t_Scissor;
 	t_Scissor.offset = {0,0};
 	t_Scissor.extent = t_SwapChainExtent;
 
 	vkCmdSetScissor(m_CommandBuffers[m_CurrentFrame], 0, 1, &t_Scissor);
 
+	VkDeviceSize t_Offsets[] = {0};
+	vkCmdBindVertexBuffers(m_CommandBuffers[m_CurrentFrame], 0, 1, &m_ShaderStorageBuffers[m_CurrentFrame].GetBuffer(), t_Offsets);
+
 	// Bind Descriptor Sets
-	vkCmdBindDescriptorSets(m_CommandBuffers[m_CurrentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1,
-	                        &m_DescriptorSets[m_CurrentFrame], 0, nullptr);
+	/*vkCmdBindDescriptorSets(m_CommandBuffers[m_CurrentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1,
+	                        &m_DescriptorSets[m_CurrentFrame], 0, nullptr);*/
 
 	// Draw
-	vkCmdDrawIndexed(m_CommandBuffers[m_CurrentFrame], static_cast<uint32_t>(m_TestModel.GetMesh().m_Indices.size()), 1, 0, 0, 0);
-
+	// vkCmdDrawIndexed(m_CommandBuffers[m_CurrentFrame], static_cast<uint32_t>(m_TestModel.GetMesh().m_Indices.size()), 1, 0, 0, 0);
+	vkCmdDraw(m_CommandBuffers[m_CurrentFrame], particle_amount, 1, 0, 0);
 
 	// end render pass
 	vkCmdEndRenderPass(m_CommandBuffers[m_CurrentFrame]);
@@ -1029,6 +1025,7 @@ void VRenderer::CreateSyncObjects()
 	m_ComputeFinishedSemaphores.resize(m_MaxInFlightFrames);
 	m_InFlightFences.resize(m_MaxInFlightFrames);
 	m_InFlightFences.resize(m_MaxInFlightFrames);
+	m_ComputeInFlightFences.resize(m_MaxInFlightFrames);
 
 
 	VkSemaphoreCreateInfo t_SemaphoreCreateInfo = {};
@@ -1152,6 +1149,7 @@ void VRenderer::GenShaderStorageBuffers()
 
 	// for every in-flight frame, create a Shader Storage Buffer (GPU side)
 	// and copy the contents of the staging buffer into it
+	m_ShaderStorageBuffers.resize(m_MaxInFlightFrames);
 	for (size_t i = 0; i < m_MaxInFlightFrames; i++)
 	{
 		m_ShaderStorageBuffers[i].CreateWithStagingBuffer(	t_StagingBuffer,
@@ -1176,6 +1174,7 @@ void VRenderer::GenComputeDescriptorSets(int a_FramesInFlight, std::vector<Unifo
 	t_AllocateInfo.pSetLayouts = t_DescriptorSetLayouts.data();
 
 	m_ComputeDescriptorSets.resize(m_MaxInFlightFrames);
+	
 	if (vkAllocateDescriptorSets(m_Device.GetLogicalDevice(), &t_AllocateInfo, m_ComputeDescriptorSets.data()) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Error: Could not allocate compute descriptor sets!");
@@ -1230,9 +1229,9 @@ void VRenderer::GenComputeDescriptorSets(int a_FramesInFlight, std::vector<Unifo
 
 void VRenderer::CreateComputePipeline()
 {
-	auto t_ComputeShaderCode = ReadFile("shaders/compute_particles.spv");
+	const auto t_ComputeShaderByteCode = ReadFile("../vRenderer/assets/shaders/compiled/compute_shader.spv");
 
-	VkShaderModule t_ComputeShaderMod = GenShaderModule(t_ComputeShaderCode);
+	const VkShaderModule t_ComputeShaderMod = GenShaderModule(t_ComputeShaderByteCode);
 
 	// create ComputeShaderStage
 	VkPipelineShaderStageCreateInfo t_ComputeShaderStageCreateInfo{};
