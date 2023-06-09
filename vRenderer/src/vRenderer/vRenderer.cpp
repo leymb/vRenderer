@@ -151,7 +151,7 @@ void VRenderer::Render(Camera& a_Camera)
 	VkSubmitInfo t_CommandBufferSubmitInfo = {};
 	t_CommandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore t_WaitSemaphores[] = {m_ImageAcquiredSemaphores[m_CurrentFrame]};
+	VkSemaphore t_WaitSemaphores[] = {m_ComputeFinishedSemaphores[m_CurrentFrame], m_ImageAcquiredSemaphores[m_CurrentFrame]};
 	VkPipelineStageFlags t_WaitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	t_CommandBufferSubmitInfo.waitSemaphoreCount = 1;
 	t_CommandBufferSubmitInfo.pWaitSemaphores = t_WaitSemaphores;
