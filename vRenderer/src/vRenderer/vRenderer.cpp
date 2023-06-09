@@ -1186,7 +1186,7 @@ void VRenderer::GenComputeDescriptorSets(int a_FramesInFlight, std::vector<Unifo
 		VkDescriptorBufferInfo t_UniformBufferInfo = {};
 		t_UniformBufferInfo.buffer = a_UniformBuffers[i].GetBuffer();
 		t_UniformBufferInfo.offset = 0;
-		t_UniformBufferInfo.range = sizeof(UniformBufferObject);
+		t_UniformBufferInfo.range = sizeof(ComputeUBO);
 
 		std::array<VkWriteDescriptorSet, 3> t_WriteDescriptorSets = {};
 		t_WriteDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1211,9 +1211,9 @@ void VRenderer::GenComputeDescriptorSets(int a_FramesInFlight, std::vector<Unifo
 		t_WriteDescriptorSets[1].pBufferInfo = &t_StorageBufferInfoLastFrame;
 
 		VkDescriptorBufferInfo t_StorageBufferInfo = {};
-		t_StorageBufferInfoLastFrame.buffer = m_ShaderStorageBuffers[i].GetBuffer();
-		t_StorageBufferInfoLastFrame.offset = 0;
-		t_StorageBufferInfoLastFrame.range = sizeof(Particle) * particle_amount;
+		t_StorageBufferInfo.buffer = m_ShaderStorageBuffers[i].GetBuffer();
+		t_StorageBufferInfo.offset = 0;
+		t_StorageBufferInfo.range = sizeof(Particle) * particle_amount;
 
 		t_WriteDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		t_WriteDescriptorSets[2].dstSet = m_ComputeDescriptorSets[i];
